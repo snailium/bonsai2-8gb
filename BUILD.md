@@ -1,7 +1,31 @@
 # Rebuilding for a different GPU
 
-The bundled binaries target **`sm_120` (Blackwell)** only. For Ampere (`sm_86`),
-Ada (`sm_89`) or anything else, rebuild — it takes about 10 minutes.
+The bundled binaries come in two flavours — pick by your card:
+
+| Asset | Architectures |
+| --- | --- |
+| `bonsai2-universal.tar.gz` | sm_75, 80, 86, 89, 90, 100, 110, 120 (+ PTX) — **everything** |
+| `bonsai2-5060.tar.gz` | sm_120 only |
+
+If neither suits you, or you want a smaller build, rebuild — ~10 minutes, and
+only `CMAKE_CUDA_ARCHITECTURES` changes.
+
+**How to tell which you have:**
+
+```bash
+nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
+```
+
+| Card | Compute capability | `-DCMAKE_CUDA_ARCHITECTURES=` |
+| --- | --- | --- |
+| RTX 2080 / 2070 (Turing) | 7.5 | 75 |
+| RTX 3080 / 3090 (Ampere) | 8.6 | **86** |
+| RTX 4070 / 4090 (Ada) | 8.9 | **89** |
+| RTX 5060 / 5070 / 5090 (Blackwell) | 12.0 | 120 |
+
+A binary built for one architecture will not run on another — CUDA 13 supports
+all of them, but the compiled cubins are architecture-specific. Confirm what a
+binary contains with `cuobjdump --list-elf <path>/libggml-cuda.so`.
 
 ## Why this is not a normal llama.cpp build
 
@@ -22,7 +46,7 @@ git clone -b bonsai2 https://github.com/sudoingX/llama.cpp
 cd llama.cpp && git log --oneline -1   # expect dcc3be7
 ```
 
-## Two traps nobody documents together
+## Three traps nobody documents together
 
 ### Trap 1 — CUDA 12.4 cannot target Blackwell
 
@@ -59,19 +83,58 @@ sudo sed -i '653s/);/) noexcept(true);/' "$H"
 The GCC version is irrelevant — the conflict is with glibc, not GCC. We tested
 GCC 13, 14 and 15; all fail without the patch.
 
+### Trap 3 — CMake silently picks the wrong nvcc
+
+If you installed CUDA 13.1 alongside an older toolkit, `cmake` may still find the
+**older** nvcc via `PATH` and fail with:
+
+```
+ptxas fatal : Value 'sm_52' is not defined for option 'gpu-name'
+```
+
+`sm_52` is a CUDA 12-era default. Passing `CUDAARCHS` does **not** help, because
+the failure happens during CMake's compiler *identification* probe, before
+architecture selection. Name the compiler explicitly instead:
+
+```
+-DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.1/bin/nvcc
+```
+
+If anything looks odd, check which nvcc CMake found in
+`build/CMakeCache.txt` (`CMAKE_CUDA_COMPILER`).
+
 ## Build
 
 ```bash
-export PATH=/usr/local/cuda-13.1/bin:$PATH
 cmake -S llama.cpp -B build \
   -DGGML_CUDA=ON \
-  -DCMAKE_CUDA_ARCHITECTURES=120 \
+  -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.1/bin/nvcc \
+  -DCMAKE_CUDA_ARCHITECTURES=86 \
   -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-13 \
   -DCMAKE_BUILD_TYPE=Release \
   -DLLAMA_CURL=OFF \
   -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF
 cmake --build build --config Release -j 10
 ```
+
+**Every CUDA card in one binary** (slower build, larger output — this is what
+`bonsai2-universal.tar.gz` was built from):
+
+```bash
+cmake -S llama.cpp -B build \
+  -DGGML_CUDA=ON \
+  -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.1/bin/nvcc \
+  "-DCMAKE_CUDA_ARCHITECTURES=75-real;80-real;86-real;89-real;90-real;100-real;110-real;120-real;75-virtual;80-virtual;86-virtual;89-virtual;90-virtual;100-virtual;110-virtual;120-virtual" \
+  -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-13 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLAMA_CURL=OFF \
+  -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF
+cmake --build build --config Release -j 10
+```
+
+`-real` entries emit native cubins; `-virtual` entries emit PTX that the driver
+JIT-compiles for architectures newer than the toolkit knows. Include the
+`-virtual` set for forward compatibility```
 
 Output lands in `build/bin/`. Copy `llama-server`, `llama-bench`, `llama-cli` and
 every `*.so*` into the package's `bin/`.

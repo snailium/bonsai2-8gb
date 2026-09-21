@@ -56,25 +56,29 @@ See **[RECIPE.md](RECIPE.md)** for the full flag list and why each one matters.
 
 ## Read these before filing a bug
 
-**This build targets `sm_120` (Blackwell) only.** It will not run on Ampere or
-Ada. Rebuild with [BUILD.md](BUILD.md) — it takes ~10 minutes.
+**Two release assets — pick the right one:**
 
-**Three things are load-bearing and non-obvious:**
+| Asset | Architecture | Size | Use when |
+| --- | --- | ---: | --- |
+| `bonsai2-universal.tar.gz` | sm_75 → sm_120 | 314 MB | **any CUDA card** — Turing, Ampere, Ada, Hopper, Blackwell |
+| `bonsai2-5060.tar.gz` | sm_120 only | 147 MB | RTX 50-series only |
 
-1. **`--reasoning-effort medium`** — the chat template defaults to `xhigh`, which
-   on a quantized 27B turns into a runaway thinking loop. In a controlled test it
-   returned **nothing at all** on 3/3 tasks at a 4096-token cap, and still nothing
-   for one task at 16384. `medium` completes them in 45–124 s.
-2. **`--presence-penalty 1.5`** — the template default is `0.0`, which produces
-   repetition loops. 1.5 is the value that works.
-3. **`--kv-mean-center`** — required companion to `q4_0` KV. The bias is
-   model-specific and must be calibrated with matching cache settings, or the
-   server refuses to start.
+Both behave identically on a Blackwell card. The universal build embeds native
+cubins **and** PTX for all eight architectures, so one binary works everywhere —
+verified:
 
-**Zero draft acceptance is the MTP failure signature.** If MTP gives no speedup,
-grep the log for `draft acceptance =`. Near 0.00 means pure overhead — we hit
-this once from a stale `llama-server` process holding the GPU. It looks like
-"MTP doesn't help", not like an error.
+```
+$ cuobjdump --list-elf bin/libggml-cuda.so.0.21.0
+  ... sm_75 sm_80 sm_86 sm_89 sm_90 sm_100 sm_110 sm_120
+```
+
+The size difference is entirely `libggml-cuda.so` (68 MB single-arch vs 331 MB
+universal) — CUDA kernels are compiled per architecture.
+
+If you build your own and see a load failure or a silent CPU fallback, your
+`CMAKE_CUDA_ARCHITECTURES` does not match your card — see [BUILD.md](BUILD.md).
+
+Check yours: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
 
 ---
 
