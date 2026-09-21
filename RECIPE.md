@@ -135,11 +135,51 @@ but it is active for this context - recalibrate with matching cache settings
 
 Generate it with `-fa on -ctk q4_0` to match the serving config.
 
-**6. Do not use stock llama.cpp or Ollama.**
+**6. `llama-bench` cannot test MTP.** It rejects `--spec-type`:
+
+```
+error: invalid parameter for argument: --spec-type
+```
+
+MTP is a *server* feature. To measure it, run `llama-server` and read
+`timings.predicted_per_second` from the response, or grep the log for
+`draft acceptance =`. `llama-bench` measures the kernel only — which is still
+worth doing (it is how the +37% figure was obtained).
+
+**7. Counting tokens wrong gives a 4x error.** This model streams its thinking
+through `delta.reasoning_content`, **not** `delta.content`. A client that counts
+only `content` reports ~9.6 tok/s where the real figure is ~39. Count both, and
+keep the two separate.
+
+**8. Streaming responses carry no `usage` block by default.** Without
+
+```json
+"stream_options": {"include_usage": true}
+```
+
+you get no `prompt_tokens`, so prefill rate cannot be computed from server-side
+counts. Send it on every streaming request you intend to measure.
+
+**9. Two servers on one GPU silently halve throughput.** We hit this: a stale
+`llama-server` from an earlier run was still holding the card. Nothing errors —
+you just get roughly half the tokens and, with MTP, an acceptance rate near zero.
+Before benchmarking, check:
+
+```bash
+pgrep -af llama-server     # should list exactly one
+nvidia-smi                 # confirm the VRAM figure matches your config
+```
+
+**10. Do not use stock llama.cpp or Ollama.**
 Bonsai 2 needs the PrismML fork lineage. Stock llama.cpp rejects `PTQ1_0`/`PQ2_0`
 outright, and a legacy `Q2_0` file loads silently and emits **gibberish**.
 
-**7. `-c` ceiling is cuBLAS-workspace-bound, not KV-bound.**
+**11. The vision tower does not fit an 8 GB card.** Adding `--mmproj` (604 MiB)
+causes a hard OOM at load; even when it loads, usable context collapses to a few
+thousand tokens. The recipes here are text-only. On 10 GB+ it becomes viable —
+but MTP and the vision tower compete for the same headroom.
+
+**12. `-c` ceiling is cuBLAS-workspace-bound, not KV-bound.**
 On 8 GB without MTP we measured 49152 working and 65536 failing on
 `cublas_workspaces` allocation. Reducing `-ub` does not help.
 

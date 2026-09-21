@@ -159,3 +159,76 @@ Then reproduce the benchmark:
 ```bash
 scripts/bench.sh    # expect a large jump over the stock PrismML release binary
 ```
+
+---
+
+## Packaging pitfalls (if you redistribute the binaries)
+
+These produced a package that looked fine and was broken. None are obvious.
+
+### Do NOT `strip` these binaries
+
+`strip --strip-unneeded` on the llama.cpp shared objects produces a
+**segfault** the next time they run:
+
+```
+$ ./llama-bench -m model.gguf ...
+Segmentation fault (core dumped)     # exit 139
+```
+
+Strip the executable stubs if you must, but leave `libggml-*.so`,
+`libllama*.so` and `libmtp*.so` alone. Always re-run a benchmark after any
+binary modification — a broken build still links and still `--version`s.
+
+### The `__FILE__` paths cannot be stripped away
+
+The libraries embed assertion strings containing absolute source paths
+(`/home/you/src/ggml/...`). They live in `.rodata`, not in a debug section, so
+`strip` does not remove them and `readelf -S` shows no `debug` section to drop.
+
+If you are sanitizing a build for redistribution you must rewrite them in place,
+and the replacement **must be byte-for-byte the same length** — these strings sit
+in a table with fixed offsets, so a different-length replacement corrupts
+neighbouring data:
+
+```python
+OLD = b"/home/you/src/"          # 14 bytes
+NEW = b"/build/llama-cpp-src/xxx" # must also be 14 bytes
+assert len(OLD) == len(NEW)
+```
+
+Use Python for this, **not `perl -pi`** — `perl -pi` follows symlinks and rewrites
+the target repeatedly, which garbles the string table (`src/.../template-instances`
+became `s-/template-ices`). Iterate only regular files, skipping symlinks.
+
+### Copy shared libraries with `cp -P`
+
+llama.cpp ships `.so` chains: `libggml-cuda.so` → `.so.0` → `.so.0.21.0`. A plain
+`cp *.so*` **dereferences** them into three full copies — a 355 MB package became
+1.1 GB (three × 331 MB for the universal build). Use:
+
+```bash
+cp -P *.so *.so.* dest/
+```
+
+and `tar czf` (which preserves symlinks by default) — verify with
+`ls -la dest/ | grep libggml-cuda` that you still see `->`.
+
+### Making the package relocatable
+
+Set the runpath to `$ORIGIN` so the loader finds the sibling libraries:
+
+```bash
+patchelf --set-rpath '$ORIGIN' bin/llama-server
+```
+
+Without this the binaries carry the builder's absolute path and may fail on
+another machine even though the libraries sit right next to them.
+
+### Verify before publishing
+
+```bash
+strings bin/* | grep -c "$HOME"          # expect 0
+ls -la bin/ | grep '\->'                  # expect symlinks
+./bin/llama-bench -m model.gguf -p 128 -n 32 -r 1 -d 0   # expect it to RUN
+```
