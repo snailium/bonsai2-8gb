@@ -55,7 +55,7 @@ GGML_CUDA_BATCH_INVARIANT=1      # makes MTP strictly lossless (greedy byte-iden
 -ctk q4_0 -ctv q4_0               # required: keeps 32K inside 8 GB
 --kv-mean-center <bias.gguf>      # recovers q4_0 K-cache accuracy; hard requirement
 --reasoning-effort medium         # IMPORTANT, see below
---spec-type draft-mtp --spec-draft-n-max 1
+--spec-type draft-mtp --spec-draft-n-max 1   # see note below
 --temp 0.7 --top-p 0.80 --top-k 20 --presence-penalty 1.5
 ```
 
@@ -68,6 +68,27 @@ returns **nothing at all** on all three tasks at a 4096-token cap, and **still
 returns nothing** for one task at 16384. `medium` completes all three in 45–124 s.
 
 `medium` is the only setting that injects no instruction.
+
+### `--spec-draft-n-max`: 1 or 2?
+
+This is the number of tokens the draft head proposes per step. Acceptance falls
+as it rises, and throughput is **not** monotonic — measured on an RTX 5060 at
+`-c 32768`, lean file, 3 runs each:
+
+| `--spec-draft-n-max` | decode tok/s | acceptance | generated/request |
+| ---: | ---: | ---: | ---: |
+| **1** | 68.7 | 0.851 | 161 |
+| **2** | **70.0** | 0.756 | 238 |
+| 3 | 68.2 | 0.666 | 299 |
+
+`2` was ~2% faster on our card; the upstream author measured `1` as best on an
+RTX 3060 and noted `n-max 2` loses to head-off past ~16K context. The difference
+is small and workload-dependent, so **sweep it on your own card** rather than
+trusting either number. `1` is the safer default — it has the highest acceptance,
+so it degrades most gracefully if your workload drafts poorly.
+
+Note that production `b70-sycl` uses `3`, but that is a different model
+(Qwen3.8-27B with its own MTP head), so the value is not transferable.
 
 ### Sampling
 
