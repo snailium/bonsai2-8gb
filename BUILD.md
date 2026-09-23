@@ -5,7 +5,7 @@ The bundled binaries come in two flavours — pick by your card:
 | Asset | Architectures |
 | --- | --- |
 | `bonsai2-universal.tar.gz` | sm_75, 80, 86, 89, 90, 100, 110, 120 (+ PTX) — **everything** |
-| `bonsai2-5060.tar.gz` | sm_120 only |
+| `bonsai2-5060-sm120-only.tar.gz` | sm_120 only |
 
 If neither suits you, or you want a smaller build, rebuild — ~10 minutes, and
 only `CMAKE_CUDA_ARCHITECTURES` changes.
@@ -151,13 +151,14 @@ sudo apt install libcudart12 libcublas12 libgomp1
 ## Checking it worked
 
 ```bash
-cd bin && ./llama-bench --list-devices     # should name your GPU and its compute cap
+# from the package root
+./bin/llama-bench --list-devices    # should name your GPU and its compute cap
 ```
 
-Then reproduce the benchmark:
+Then reproduce the benchmark (run it from the package root, not from `bin/`):
 
 ```bash
-scripts/bench.sh    # expect a large jump over the stock PrismML release binary
+./scripts/bench.sh    # expect a large jump over the stock PrismML release binary
 ```
 
 ---

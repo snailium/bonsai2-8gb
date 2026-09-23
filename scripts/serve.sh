@@ -13,7 +13,7 @@ MODEL_DIR="${MODEL_DIR:-$HOME/models/bonsai2}"
 # chat_template_kwargs {"enable_thinking": false}.
 MODEL="${MODEL:-$MODEL_DIR/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf}"
 KVMC="${KVMC:-$MODEL_DIR/kv-mean-center.gguf}"
-CTX="${CTX:-32768}"
+CTX="${CTX:-40960}"
 PORT="${PORT:-18199}"
 HOST="${HOST:-127.0.0.1}"
 

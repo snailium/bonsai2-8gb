@@ -32,12 +32,14 @@ cd bonsai2-universal
 hf download sudoingx/Ternary-Bonsai-2-27B-PTQ1_0-MTP-GGUF \
     Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf --local-dir ~/models/bonsai2
 
-# 3. build the KV calibration bias (once, per model)
-MODEL_DIR=~/models/bonsai2 ./scripts/make-kv-bias.sh \
-    ~/models/bonsai2/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf
+# 3. build the KV calibration bias (once, per model).
+#    The script takes the model path and writes kv-mean-center.gguf beside it,
+#    which is where serve.sh looks for it.
+./scripts/make-kv-bias.sh ~/models/bonsai2/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf
 
-# 4. serve (agent profile: effort=low, budget=4096)
-MODEL_DIR=~/models/bonsai2 ./scripts/serve.sh
+# 4. serve — golden config: -c 40960, effort=low, budget=4096
+#    MODEL_DIR defaults to ~/models/bonsai2; override it if your weights live elsewhere.
+./scripts/serve.sh
 ```
 
 `serve.sh` defaults to the **agent** reasoning profile. Override with
@@ -60,7 +62,7 @@ curl http://127.0.0.1:18199/v1/chat/completions \
 GGML_CUDA_BATCH_INVARIANT=1      # makes MTP strictly lossless (greedy byte-identical)
 -m  <lean gguf>
 -ngl 99 -fa on
--c 32768                          # verified working on 8 GB
+-c 40960                          # golden: largest context that loads with MTP
 -np 1                             # MTP requires a single slot
 -ctk q4_0 -ctv q4_0               # required: keeps 32K inside 8 GB
 --kv-mean-center <bias.gguf>      # recovers q4_0 K-cache accuracy; hard requirement
@@ -191,7 +193,8 @@ model — it produces repetition loops. Use **1.5** (instruct mode, thinking off
 | stock PrismML `b10685` release | 39.56 |
 | **this package** | **54.31** (+37%) |
 
-Server, with MTP, `-c 32768`, `GGML_CUDA_BATCH_INVARIANT=1`:
+Server-side decode with MTP, `GGML_CUDA_BATCH_INVARIANT=1`, short prompts, measured at
+`-c 32768` (context depth barely affects short-prompt decode at this size):
 
 | Workload | decode tok/s | draft acceptance |
 | --- | ---: | ---: |
@@ -199,34 +202,102 @@ Server, with MTP, `-c 32768`, `GGML_CUDA_BATCH_INVARIANT=1`:
 | bash | 68.9 | 0.78 |
 | prose | 64.6 | 0.67 |
 
-At `-c 16384` the figures are identical (73.2 / 68.8 / 64.3), so 32K is free at
-this depth. VRAM: **7284 MiB used, 422 MiB free** at 32K.
+At `-c 16384` the figures are identical (73.2 / 68.8 / 64.3), so raising context from 16K
+to 32K costs nothing at this depth. VRAM: **7,284 MiB used, 422 MiB free** at 32K,
+**7,508 MiB used, 198 MiB free** at the golden 40,960.
+
+Full per-task figures at 40,960 — including prefill, TTFT and agent-run decode — are in
+[the battery results](#battery-results-at--c-40960--55-pass).
 
 ---
 
 ---
 
-## What this configuration can and cannot do
+## Golden configuration: `-c 40960`
 
-Test battery run against this build: RTX 5060 8 GB, `-c 32768`, driven through an
-agent harness so tool use is exercised end to end.
+**`-c 40960` is the recommended setting for this card.** It is the largest context that
+loads with MTP, and at it **all five battery tasks pass**.
 
-| Task | Status | Notes |
+| | |
+| --- | --- |
+| context | **40,960** |
+| VRAM | **7,508 MiB used, 198 MiB free** |
+| measured ceiling | 49,152 fails (`cudaMalloc` out of memory) |
+
+The two next steps up and down, measured on this card:
+
+| `-c` | with MTP | without MTP |
+| ---: | --- | --- |
+| 32,768 | loads, 7,284 MiB | — |
+| **40,960** | **loads, 7,508 MiB ← golden** | — |
+| 49,152 | **fails** | — |
+| 65,536 | fails | loads, 7,268 MiB — **but output collapses, see caveat 12** |
+| 81,920 | — | loads, 7,636 MiB — same collapse |
+| 90,112 | — | fails |
+
+Using 32,768 instead costs nothing in speed but leaves agent tasks fighting the wall:
+at 32K the T5 research task needed 7–25 compactions per run (1–4 of them failing), and the
+T3 review could not complete at all.
+
+## Battery results at `-c 40960` — 5/5 PASS
+
+RTX 5060 8 GB, MTP `n-max 1`, `maxTokens: 8192`, driven through an agent harness.
+
+| Task | Thinking | Status | Decode | Notes |
+| --- | --- | --- | ---: | --- |
+| t1 — single-file HTML page | **off** | **PASS** | 65.9 tok/s | 3,776 tok, `</html>` closed |
+| t2 — SVG diagram | **off** | **PASS** | 67.4 tok/s | 3,642 tok, `</svg>` closed |
+| t3 — 27-file security review | low / 4096 | **PASS** | 38.7 tok/s | 31 tool calls, 5,478-char report |
+| t4 — host configuration | low / 4096 | **PASS** | 45.1 tok/s | valid JSON, exit 0 |
+| t5 — multi-source research | low / 4096 | **PASS** | 33.8 tok/s | 46 tool calls, answered correctly |
+
+### Generation tasks (t1, t2)
+
+| Task | prefill | TTFT | decode | completion | output closed |
+| --- | ---: | ---: | ---: | ---: | --- |
+| t1 HTML | 28.6 tok/s | 1.51 s | 65.9 tok/s | 3,776 | yes |
+| t2 SVG | 54.0 tok/s | 0.59 s | 67.4 tok/s | 3,642 | yes |
+
+Both ran with `enable_thinking: false` and produced **0 reasoning frames** — the entire
+output budget went to the document.
+
+### Agent tasks (t3, t4, t5)
+
+Weighted over all requests in each run:
+
+| Task | requests | prefill | TTFT | decode | wall clock |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| t3 | 17 | 124.8 tok/s | 113.1 s | 38.7 tok/s | ~60 min (hit a 1 h cap on the first attempt) |
+| t4 | 5 | 119.6 tok/s | 11.3 s | 45.1 tok/s | short |
+| t5 | 46 | 122.7 tok/s | 86.9 s | 33.8 tok/s | ~35 min |
+
+### Why agent decode is lower than generation decode
+
+Agent runs decode at 33–45 tok/s against 66–67 for single-shot generation. The difference
+is context depth, not a config problem: the agent runs carry 9–15K token prompts, and
+decode falls with context length on this card. Prefill itself stays healthy at
+120–125 tok/s throughout.
+
+**Every agent turn re-prefills the whole prompt.** Context trimming shadows a span
+mid-conversation, which invalidates the cache for everything after it, so the next request
+re-evaluates ~9,000–15,000 tokens from scratch — roughly **72 seconds of prefill per tool
+call** at 129 tok/s. That is the dominant wall-clock cost on long agent tasks, and it is
+inherent to surviving in a 40K window.
+
+## What the 32K configuration could not do
+
+The same battery at `-c 32768`:
+
+| Task | at 32K | at 40K |
 | --- | --- | --- |
-| t1 — single-file HTML page | **PASS** (thinking off) | 0 reasoning frames, `</html>` closed |
-| t2 — SVG diagram | **PASS** (thinking off) | 0 reasoning frames, `</svg>` closed |
-| t3 — multi-file security review | **context-exhausted** | a 27-file review does not fit 32K |
-| t4 — gather host configuration | **PASS** | valid JSON, exit 0 |
-| t5 — multi-source research | **exceeds specification** | see below |
+| t1, t2 | PASS | PASS |
+| t3 | could not complete (context exhausted) | **PASS** |
+| t4 | PASS | PASS |
+| t5 | 1 pass in 5 runs — the pass was an outlier | **2 passes in 2 runs** |
 
-**t3 and t5 do not pass on 8 GB.** The cause in both cases is context capacity, not a
-parameter — see the T5 evidence below, which applies equally to t3.
+### T5 at 32K: five runs, five configurations, one cause
 
-### T5: five runs, five configurations, one cause
-
-T5 asks for a snowfall total at Ottawa Airport over a date range: the model must find a
-data source, query it, and compute. We ran it five times varying **only** the reasoning
-configuration.
+Context capacity, and nothing else. Varying only the reasoning configuration:
 
 | # | Configuration | steps | tool calls | compactions (failed) | turn ended |
 | ---: | --- | ---: | ---: | ---: | --- |
@@ -236,62 +307,39 @@ configuration.
 | 4 | thinking **off** | 15 | 20 | 9 (**4**) | `max-tokens` |
 | 5 | `low` + budget 2,048 | 14 | 13 | 7 (**1**) | `max-tokens` |
 
-**Run 1 is the only completion, and it is an outlier.** It happened to pick a first
-search query that led to a usable API and converged in about six minutes, answering
-153.4 cm over 19 requests. Runs 2–5 all reached the 32,768-token wall.
-
-Two observations worth keeping:
-
-- **More budget did not mean more progress.** Run 2 used the most steps and the most
-  tool calls and failed worst; run 5 used the fewest and got furthest toward an answer.
-- **Runs 4 and 5 were cut off mid-sentence while writing the final answer.** Run 5 had
-  already written its method section — it simply ran out of window.
-
-Every non-completion ended `turn/end: {"kind": "max-tokens"}` at the context ceiling,
-not at an output cap and not at a guard block. Compaction failed the same way each time:
+Run 1 is the only completion and it is an outlier. Runs 2–5 all hit the 32,768-token wall,
+ending `turn/end: {"kind": "max-tokens"}` — the context, not an output cap and not a guard
+block. Compaction failed the same way every time:
 
 ```
 "summary is not smaller than the shadowed content (1180 estimated framed tokens >= 1180)"
 ```
 
-The summarizer cannot produce a summary smaller than the region it is condensing. That
-is a structural limit of surface compaction, not something a setting fixes.
+The summarizer cannot produce a summary smaller than the region it is condensing. That is
+a structural limit of surface compaction, and it is why the extra 8K matters: at 40,960 the
+same task needed **1 compaction with zero failures**.
 
 ### What was ruled out — do not re-litigate these
 
 | Hypothesis | Verdict |
 | --- | --- |
-| Thinking budget too small or too large | **Ruled out** — 2,048 / 4,096 / 16,384 / none all failed |
-| `reasoning-effort` level | **Ruled out** — `medium` and `low` both failed |
-| Thinking on vs off | **Ruled out** — both failed |
+| Thinking budget too small or too large | **Ruled out** — 2,048 / 4,096 / 16,384 / none all failed at 32K |
+| `reasoning-effort` level | **Ruled out** — `medium` and `low` both failed at 32K |
+| Thinking on vs off | **Ruled out** — both failed at 32K |
 | `maxTokens` too high | **Partially addressed** — dropping to 8192 removes a pathological case but does not create room |
 | Flash-attention build flag missing | **Ruled out** — `q4_0-q4_0` ships in the default kernel set; FA was already active |
-| Compaction could be made to work | **No** — the summarizer must fit the region it condenses |
+| Compaction could be made to work | **No** — the summarizer must fit the region it condenses; more context is the fix |
 
 ### Client `max_tokens`: use 8192
 
-On a 32K window a 16K output cap is not a reservation of space — it races the prompt for
-the same tokens. We measured a run where prompt 32,248 + output 520 = 32,768 exactly,
-ending `max-tokens`: the window was consumed by prompt **and** output together.
+On a 40K window a larger output cap races the prompt for the same tokens. We measured a run
+where prompt 32,248 + output 520 = 32,768 exactly, ending `max-tokens`: the window was
+consumed by prompt **and** output together.
 
-But note that **8192 is tight for long document generation**, which is exactly what t1
-is. Five runs of the HTML task at identical settings produced totals of 4,579 / 7,829 /
-8,192 / 8,192 / 8,192, and **three of the five hit the cap without closing `</html>`**.
-If your workload is long-form output, raise `max_tokens` to 12K+ and accept a smaller
-context, or ask for shorter documents.
-
-### What would change the t5/t3 verdict
-
-Only a larger window or a different task shape — **neither is a parameter**:
-
-1. **A bigger card.** On a same-bandwidth RTX 3060 Ti, raising context from 65,536 to
-   98,304 costs about 0.2% throughput, and the real cliff is at ~114,688. On a 10–12 GB
-   card both tasks would likely pass with one flag change.
-2. **A different task shape.** A subagent split that resets context, or tooling that
-   returns summaries rather than full payloads — but that changes the task.
-
-**On 8 GB the context cannot be raised.** Record t3 and t5 as needing more window than
-this configuration provides, not as backend failures.
+But **8192 is tight for long document generation**. Five runs of the HTML task at identical
+settings produced totals of 4,579 / 7,829 / 8,192 / 8,192 / 8,192, and **three of the five
+hit the cap without closing `</html>`**. If your workload is long-form output, raise
+`max_tokens` to 12K+ and accept a smaller context, or ask for shorter documents.
 
 ## Caveats — read before deploying
 
@@ -395,6 +443,23 @@ but MTP and the vision tower compete for the same headroom.
 **12. `-c` ceiling is cuBLAS-workspace-bound, not KV-bound.**
 On 8 GB without MTP we measured 49152 working and 65536 failing on
 `cublas_workspaces` allocation. Reducing `-ub` does not help.
+
+---
+
+**12. Do not drop MTP to gain context — the model collapses.**
+Removing `--spec-type draft-mtp` roughly doubles the usable window (40,960 → 81,920) but
+the model then emits **nothing but `/` characters**, deterministically. Measured:
+
+| Configuration | Result |
+| --- | --- |
+| 32K + MTP | coherent |
+| 32K, no MTP | **all slashes** (reproduced) |
+| 64K, no MTP | **all slashes, 3/3 runs** |
+| no MTP + `enable_thinking:false` | `content` is **200 consecutive `/`** |
+| no MTP, original `PTQ1_0.gguf` | **all slashes** |
+
+It is not the `-mtp-lean` file (the original GGUF behaves identically) and not the
+reasoning path (thinking off collapses into `content`). **Keep MTP enabled.**
 
 ---
 

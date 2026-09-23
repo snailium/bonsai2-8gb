@@ -61,7 +61,7 @@ See **[RECIPE.md](RECIPE.md)** for the full flag list and why each one matters.
 | Asset | Architecture | Size | Use when |
 | --- | --- | ---: | --- |
 | `bonsai2-universal.tar.gz` | sm_75 → sm_120 | 314 MB | **any CUDA card** — Turing, Ampere, Ada, Hopper, Blackwell |
-| `bonsai2-5060.tar.gz` | sm_120 only | 147 MB | RTX 50-series only |
+| `bonsai2-5060-sm120-only.tar.gz` | sm_120 only | 147 MB | RTX 50-series only |
 
 Both behave identically on a Blackwell card. The universal build embeds native
 cubins **and** PTX for all eight architectures, so one binary works everywhere —
@@ -80,7 +80,15 @@ If you build your own and see a load failure or a silent CPU fallback, your
 
 Check yours: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
 
----
+**Reasoning is not one setting — pick by workload.** Agent/tool-using work wants
+`--reasoning-effort low --reasoning-budget 4096`; single-shot document generation wants
+`--reasoning off`. The template default (`xhigh`) is actively harmful on this model.
+Full reasoning and the measurements behind it: [RECIPE.md](RECIPE.md).
+
+**What passes on 8 GB:** the two generation tasks and a short agent task pass. Tasks
+needing 13–20 tool calls (a 27-file review, multi-source research) exhaust the 32K
+context and do not — that is a window limit, not a parameter. Details and the evidence:
+[RECIPE.md](RECIPE.md#what-this-configuration-can-and-cannot-do).
 
 ---
 
