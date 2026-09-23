@@ -82,6 +82,8 @@ Check yours: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
 
 ---
 
+---
+
 ## Runtime requirements
 
 - NVIDIA driver (recent enough for your card) — **the CUDA toolkit is not needed**

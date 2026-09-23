@@ -54,20 +54,95 @@ GGML_CUDA_BATCH_INVARIANT=1      # makes MTP strictly lossless (greedy byte-iden
 -np 1                             # MTP requires a single slot
 -ctk q4_0 -ctv q4_0               # required: keeps 32K inside 8 GB
 --kv-mean-center <bias.gguf>      # recovers q4_0 K-cache accuracy; hard requirement
---reasoning-effort medium         # IMPORTANT, see below
 --spec-type draft-mtp --spec-draft-n-max 1   # see note below
 --temp 0.7 --top-p 0.80 --top-k 20 --presence-penalty 1.5
 ```
 
-### `--reasoning-effort medium` is not optional
+Reasoning is **not** a single setting — pick by workload (see the next section).
 
-The chat template defaults to `xhigh`, which injects a "think carefully through
-the task" system line. On a quantized 27B that becomes a runaway loop: a
-controlled experiment (3 tasks × 2 caps × 2 runs, greedy) found the default
-returns **nothing at all** on all three tasks at a 4096-token cap, and **still
-returns nothing** for one task at 16384. `medium` completes all three in 45–124 s.
+---
 
-`medium` is the only setting that injects no instruction.
+## Reasoning: two profiles, not one setting
+
+We tested this backend both as a plain text generator and as an agent backend. The two
+want opposite things, and there is no single value that serves both.
+
+| Workload | Server flag | Client |
+| --- | --- | --- |
+| **Single-shot generation** — "write me an HTML page / an SVG / a document" | `--reasoning off` | — |
+| **Agentic / tool-using** — research, review, multi-step work | `--reasoning-effort low --reasoning-budget 4096` | — |
+
+### Generation tasks: turn thinking off
+
+These have no planning phase — the model writes. Thinking spends tokens the document
+needs, and on this model it more often degenerates than helps. Measured with thinking
+off, both generator tasks passed with **0 reasoning frames** and correctly closed output:
+
+| Task | reasoning frames | completion tokens | decode | output closed |
+| --- | ---: | ---: | ---: | --- |
+| HTML page | **0** | 6,731 | 66.2 tok/s | yes (`</html>`) |
+| SVG diagram | **0** | 2,423 | 67.4 tok/s | yes (`</svg>`) |
+
+### Agent tasks: `low` with a bounded budget
+
+Agentic work does benefit from a plan, but this model over-deliberates on
+knowledge-dense prompts — we measured a case where **86% of a 24,508-token response was
+thinking** and the answer never arrived. `low` fixes that with an explicit instruction
+from the chat template:
+
+> "Reasoning effort is set to low. **Keep your thinking brief and focused, moving
+> directly to the conclusion without unnecessary elaboration.**"
+
+`medium` injects **no instruction at all**, which is why the template's `xhigh` default is
+so damaging. But `medium` alone still over-thinks: an unbounded `medium` run spent 86% of
+its budget thinking and failed to emit its document.
+
+### Why a budget, and why 4096
+
+The budget is a **hard cut** — the sampler forces the end-of-thinking sequence the moment
+the count is reached, so the model answers from whatever plan it had. Verified exact: a
+budget of 2,048 stopped thinking at **2,064–2,070 tokens** across five runs (the ~20-token
+overshoot is the sampler letting a multi-byte character finish). There is no graceful
+wind-down.
+
+**4096, not 2048**, because the cut lands early at 2,048 on tasks that genuinely need to
+plan. 4,096 leaves more room while staying **completely inert where thinking is not
+needed** — a task that wanted no plan used only 215 thinking tokens and never approached
+either value.
+
+**16,384 does nothing at all.** We measured natural thinking of 3,000–8,700 tokens on
+these tasks, so a 16K budget never fires and is equivalent to no budget. A budget larger
+than the model's natural thinking length is a no-op.
+
+### Only one direction works from a single server
+
+If you need both profiles from one server, run with thinking **on** and disable it per
+request:
+
+```json
+"chat_template_kwargs": {"enable_thinking": false}
+```
+
+**The reverse does not work.** With `--reasoning off` on the server, a client sending
+`reasoning_effort: "high"` still gets **0 reasoning frames** — the server flag wins. We
+verified both directions:
+
+| Server | Client | Result |
+| --- | --- | --- |
+| `--reasoning off` | `reasoning_effort: high` | **0 reasoning** (server wins) |
+| `--reasoning-effort low` | *(nothing)* | 28 reasoning frames |
+| `--reasoning-effort low` | `enable_thinking: false` | **0 reasoning** |
+
+### Never leave the template default
+
+The chat template defaults to `xhigh`, which injects a "think carefully through the
+task, validate key assumptions, consider plausible alternatives" system line. On a
+quantized 27B that becomes a runaway loop. A controlled upstream experiment
+(3 tasks × 2 caps × 2 runs, greedy) found the default returns **nothing at all** on
+all three tasks at a 4096-token cap, and still nothing for one task at 16,384.
+
+`medium` is the only level that injects **no** instruction; `low` injects the brevity
+instruction quoted above. Either is safe. The default is not.
 
 ### `--spec-draft-n-max`: 1 or 2?
 
@@ -118,6 +193,95 @@ At `-c 16384` the figures are identical (73.2 / 68.8 / 64.3), so 32K is free at
 this depth. VRAM: **7284 MiB used, 422 MiB free** at 32K.
 
 ---
+
+---
+
+## What this configuration can and cannot do
+
+Test battery run against this build: RTX 5060 8 GB, `-c 32768`, driven through an
+agent harness so tool use is exercised end to end.
+
+| Task | Status | Notes |
+| --- | --- | --- |
+| t1 — single-file HTML page | **PASS** (thinking off) | 0 reasoning frames, `</html>` closed |
+| t2 — SVG diagram | **PASS** (thinking off) | 0 reasoning frames, `</svg>` closed |
+| t3 — multi-file security review | **context-exhausted** | a 27-file review does not fit 32K |
+| t4 — gather host configuration | **PASS** | valid JSON, exit 0 |
+| t5 — multi-source research | **exceeds specification** | see below |
+
+**t3 and t5 do not pass on 8 GB.** The cause in both cases is context capacity, not a
+parameter — see the T5 evidence below, which applies equally to t3.
+
+### T5: five runs, five configurations, one cause
+
+T5 asks for a snowfall total at Ottawa Airport over a date range: the model must find a
+data source, query it, and compute. We ran it five times varying **only** the reasoning
+configuration.
+
+| # | Configuration | steps | tool calls | compactions (failed) | turn ended |
+| ---: | --- | ---: | ---: | ---: | --- |
+| 1 | `medium`, no budget | 19 | 18 | 5 (0) | **completed — 153.4 cm** |
+| 2 | `medium` + budget 16,384 | 30 | 33 | 25 (**4**) | killed at 60 min |
+| 3 | `medium` + budget 16,384 | 19 | 19 | 12 (**2**) | `max-tokens` |
+| 4 | thinking **off** | 15 | 20 | 9 (**4**) | `max-tokens` |
+| 5 | `low` + budget 2,048 | 14 | 13 | 7 (**1**) | `max-tokens` |
+
+**Run 1 is the only completion, and it is an outlier.** It happened to pick a first
+search query that led to a usable API and converged in about six minutes, answering
+153.4 cm over 19 requests. Runs 2–5 all reached the 32,768-token wall.
+
+Two observations worth keeping:
+
+- **More budget did not mean more progress.** Run 2 used the most steps and the most
+  tool calls and failed worst; run 5 used the fewest and got furthest toward an answer.
+- **Runs 4 and 5 were cut off mid-sentence while writing the final answer.** Run 5 had
+  already written its method section — it simply ran out of window.
+
+Every non-completion ended `turn/end: {"kind": "max-tokens"}` at the context ceiling,
+not at an output cap and not at a guard block. Compaction failed the same way each time:
+
+```
+"summary is not smaller than the shadowed content (1180 estimated framed tokens >= 1180)"
+```
+
+The summarizer cannot produce a summary smaller than the region it is condensing. That
+is a structural limit of surface compaction, not something a setting fixes.
+
+### What was ruled out — do not re-litigate these
+
+| Hypothesis | Verdict |
+| --- | --- |
+| Thinking budget too small or too large | **Ruled out** — 2,048 / 4,096 / 16,384 / none all failed |
+| `reasoning-effort` level | **Ruled out** — `medium` and `low` both failed |
+| Thinking on vs off | **Ruled out** — both failed |
+| `maxTokens` too high | **Partially addressed** — dropping to 8192 removes a pathological case but does not create room |
+| Flash-attention build flag missing | **Ruled out** — `q4_0-q4_0` ships in the default kernel set; FA was already active |
+| Compaction could be made to work | **No** — the summarizer must fit the region it condenses |
+
+### Client `max_tokens`: use 8192
+
+On a 32K window a 16K output cap is not a reservation of space — it races the prompt for
+the same tokens. We measured a run where prompt 32,248 + output 520 = 32,768 exactly,
+ending `max-tokens`: the window was consumed by prompt **and** output together.
+
+But note that **8192 is tight for long document generation**, which is exactly what t1
+is. Five runs of the HTML task at identical settings produced totals of 4,579 / 7,829 /
+8,192 / 8,192 / 8,192, and **three of the five hit the cap without closing `</html>`**.
+If your workload is long-form output, raise `max_tokens` to 12K+ and accept a smaller
+context, or ask for shorter documents.
+
+### What would change the t5/t3 verdict
+
+Only a larger window or a different task shape — **neither is a parameter**:
+
+1. **A bigger card.** On a same-bandwidth RTX 3060 Ti, raising context from 65,536 to
+   98,304 costs about 0.2% throughput, and the real cliff is at ~114,688. On a 10–12 GB
+   card both tasks would likely pass with one flag change.
+2. **A different task shape.** A subagent split that resets context, or tooling that
+   returns summaries rather than full payloads — but that changes the task.
+
+**On 8 GB the context cannot be raised.** Record t3 and t5 as needing more window than
+this configuration provides, not as backend failures.
 
 ## Caveats — read before deploying
 
