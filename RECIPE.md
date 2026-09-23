@@ -23,16 +23,26 @@ Only NVIDIA's driver is required — the CUDA runtime is not bundled, see caveat
 ## Quick start
 
 ```bash
-# 1. get the model
+# 1. unpack the binaries — pick the package for your card (see caveat 2)
+tar xzf bonsai2-universal.tar.gz        # any CUDA card, sm_75 -> sm_120
+# tar xzf bonsai2-5060-sm120-only.tar.gz  # smaller, RTX 50-series only
+cd bonsai2-universal
+
+# 2. get the model weights
 hf download sudoingx/Ternary-Bonsai-2-27B-PTQ1_0-MTP-GGUF \
     Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf --local-dir ~/models/bonsai2
 
-# 2. build the KV calibration bias (once, per model)
-./scripts/make-kv-bias.sh ~/models/bonsai2/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf
+# 3. build the KV calibration bias (once, per model)
+MODEL_DIR=~/models/bonsai2 ./scripts/make-kv-bias.sh \
+    ~/models/bonsai2/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf
 
-# 3. serve
-./scripts/serve.sh
+# 4. serve (agent profile: effort=low, budget=4096)
+MODEL_DIR=~/models/bonsai2 ./scripts/serve.sh
 ```
+
+`serve.sh` defaults to the **agent** reasoning profile. Override with
+`REASONING_EFFORT` / `REASONING_BUDGET`, and for single-shot generation pass
+`--reasoning off` — see the reasoning section below.
 
 Then:
 
@@ -290,9 +300,27 @@ The binaries link `libcudart.so.12`, `libcublas.so.12`, `libcublasLt.so.12` from
 the system. On Ubuntu these come from `libcudart12` and `libcublas12`
 (`apt install libcudart12 libcublas12`). glibc 2.35+ required.
 
-**2. Built for `sm_120` (Blackwell) only.**
-This will **not** run on Ampere (sm_86) or Ada (sm_89). If your card is older,
-rebuild — see `BUILD.md`.
+**2. Two builds — pick the one matching your card.**
+The **universal** package covers Turing through Blackwell in a single binary;
+the **5060** package is `sm_120` only and smaller.
+
+| Package | Architectures |
+| --- | --- |
+| `bonsai2-universal.tar.gz` | sm_75, 80, 86, 89, 90, 100, 110, 120 (+ PTX) |
+| `bonsai2-5060-sm120-only.tar.gz` | sm_120 only |
+
+`cmake`'s default (non-universal) build emits only the architectures you ask for,
+so a binary built for one architecture will **not** run on another — you will get a
+load failure or a silent CPU fallback. If you build your own, set
+`CMAKE_CUDA_ARCHITECTURES` for your card; see `BUILD.md`, which lists the value per
+generation and the three build traps (CUDA 12.4 cannot target Blackwell, a glibc
+2.43 `rsqrt` conflict, and `cmake` silently selecting an older `nvcc`).
+
+Check which architecture a binary carries:
+
+```bash
+cuobjdump --list-elf bin/libggml-cuda.so.0.21.0
+```
 
 **3. The binaries carry an absolute RUNPATH** pointing at the build machine's
 path. They still run from another location because the libraries sit alongside
