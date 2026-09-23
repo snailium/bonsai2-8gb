@@ -1,0 +1,8 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 7704 MiB):
+  Device 0: NVIDIA GeForce RTX 5060, compute capability 12.0, VMM: yes, VRAM: 7704 MiB
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen35 27B PTQ1_0 - 1.75 bpw ternary (group 128) |   5.85 GiB |    27.32 B | CUDA       |  99 |   q4_0 |   q4_0 |   1 |           pp512 |        349.84 ± 2.95 |
+| qwen35 27B PTQ1_0 - 1.75 bpw ternary (group 128) |   5.85 GiB |    27.32 B | CUDA       |  99 |   q4_0 |   q4_0 |   1 |           tg128 |         54.32 ± 0.14 |
+
+build: dcc3be7 (67)
