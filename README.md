@@ -3,9 +3,11 @@
 Prebuilt **llama.cpp binaries for Ternary Bonsai 2 27B** on 8 GB NVIDIA cards,
 with working MTP speculative decoding.
 
-**Measured: 65–73 tok/s decode at 32K context** on an RTX 5060 8 GB.
-The stock PrismML release binary gives 39.6 tok/s on the same card — this build
-is **+37% on the kernel alone**, plus another **+18–35% from MTP**.
+**Measured: 54.3 tok/s kernel-only, 65–73 tok/s with MTP** on an RTX 5060 8 GB.
+The stock PrismML release binary gives 39.6 tok/s on the same card — **+37% from the
+kernel alone**, plus another **+18–35% from MTP**.
+
+Served at **`-c 40960`** with MTP, which is the largest context this card loads.
 
 | Workload | this build + MTP | acceptance |
 | --- | ---: | ---: |
@@ -17,14 +19,26 @@ is **+37% on the kernel alone**, plus another **+18–35% from MTP**.
 
 ## What's in here
 
+This repository holds the docs, scripts and evidence. **The binaries live in the
+release assets** (they are 147–314 MB, too large for the repo).
+
 ```
-bin/                 llama-server, llama-bench, llama-cli, llama-kv-mean-center + shared libs
-scripts/serve.sh     serve with the working flags
-scripts/bench.sh     reproduce the numbers
+scripts/serve.sh          serve with the working flags (CTX=40960, low/4096)
+scripts/bench.sh          reproduce the kernel benchmark
 scripts/make-kv-bias.sh   generate the required KV calibration bias
-RECIPE.md            full explanation of every flag, caveats, and pitfalls
-BUILD.md             how to rebuild for a different GPU (Ampere / Ada)
+RECIPE.md                 every flag and why, per-task measurements, 12 caveats
+BUILD.md                  rebuild for any GPU, and the three build traps
+evidence/                 scripts + raw output + session logs for every claim
 ```
+
+Download a binary with:
+```bash
+gh release download --repo snailium/bonsai2-8gb --pattern 'bonsai2-universal.tar.gz'
+tar xzf bonsai2-universal.tar.gz && cd bonsai2-universal
+```
+
+(The other asset extracts to `bonsai2-5060/` — the directory name matches the
+tarball's purpose, not its filename.)
 
 Built from [`sudoingX/llama.cpp`](https://github.com/sudoingX/llama.cpp) branch
 **`bonsai2`** at commit **`dcc3be7`** — the PrismML fork plus three unmerged fixes:
@@ -35,17 +49,20 @@ Built from [`sudoingX/llama.cpp`](https://github.com/sudoingX/llama.cpp) branch
 
 ## Quick start
 
+Requires the binary package unpacked first (see [What's in here](#whats-in-here)),
+and `scripts/` is relative to that unpacked directory.
+
 ```bash
 # 1. model weights (5.87 GiB) — from Hugging Face
 hf download sudoingx/Ternary-Bonsai-2-27B-PTQ1_0-MTP-GGUF \
     Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf --local-dir ~/models/bonsai2
 
-# 2. required KV calibration bias (once per model)
-MODEL_DIR=~/models/bonsai2 ./scripts/make-kv-bias.sh \
-    ~/models/bonsai2/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf
+# 2. required KV calibration bias (once per model).
+#    Writes kv-mean-center.gguf beside the model, which is where serve.sh looks.
+./scripts/make-kv-bias.sh ~/models/bonsai2/Ternary-Bonsai-2-27B-PTQ1_0-mtp-lean.gguf
 
-# 3. serve
-MODEL_DIR=~/models/bonsai2 ./scripts/serve.sh
+# 3. serve (defaults: CTX=40960, effort=low, budget=4096)
+./scripts/serve.sh
 ```
 
 Then hit `http://127.0.0.1:18199/v1/chat/completions`.
@@ -56,7 +73,9 @@ See **[RECIPE.md](RECIPE.md)** for the full flag list and why each one matters.
 
 ## Read these before filing a bug
 
-**Two release assets — pick the right one:**
+### Which binary
+
+Two release assets — pick the one matching your card:
 
 | Asset | Architecture | Size | Use when |
 | --- | --- | ---: | --- |
@@ -80,15 +99,26 @@ If you build your own and see a load failure or a silent CPU fallback, your
 
 Check yours: `nvidia-smi --query-gpu=compute_cap --format=csv,noheader`
 
+### Which reasoning settings
+
 **Reasoning is not one setting — pick by workload.** Agent/tool-using work wants
 `--reasoning-effort low --reasoning-budget 4096`; single-shot document generation wants
 `--reasoning off`. The template default (`xhigh`) is actively harmful on this model.
 Full reasoning and the measurements behind it: [RECIPE.md](RECIPE.md).
 
-**What passes on 8 GB:** the two generation tasks and a short agent task pass. Tasks
-needing 13–20 tool calls (a 27-file review, multi-source research) exhaust the 32K
-context and do not — that is a window limit, not a parameter. Details and the evidence:
-[RECIPE.md](RECIPE.md#what-this-configuration-can-and-cannot-do).
+### What actually runs on 8 GB
+
+**At `-c 40960` the whole battery passes — 5/5.** Two generation tasks, a host-inventory
+task, a 27-file security review (31 tool calls) and a multi-source research task
+(46 tool calls). The same battery at `-c 32768` fails the two heavy ones: the research
+task managed 1 pass in 5 attempts (an outlier) and the review could not finish at all.
+
+**The binding constraint is context capacity, not any sampling parameter** — we varied
+the reasoning configuration across its full range and it made no difference. Measurements,
+the failing runs, and the reasoning: [RECIPE.md](RECIPE.md#battery-results-at-c-40960-55-pass).
+
+**Reproduce any of it:** [evidence/](evidence/) ships the scripts, the raw output for each
+claim, and the six full session logs (1.8 MB).
 
 ---
 
@@ -125,6 +155,7 @@ llama.cpp's MIT.
 RTX 5060 8 GB (8151 MiB, 447 MiB driver-reserved → 7704 MiB usable), driver
 595.91.07, Ubuntu 26.04, kernel 7.0.0-31.
 
-Numbers are reproducible via `scripts/bench.sh`. Your card will differ — see
-`sweeps/` in the kernel repo for other hardware (RTX 3060 12 GB, 3060 Ti 8 GB,
-4070).
+Numbers are reproducible: `scripts/bench.sh` for the kernel figure, and
+[`evidence/`](evidence/) for everything else — the scripts, the raw output per claim,
+and the session logs behind the agent-task results. Your card will differ; see
+`sweeps/` in the kernel repo for other hardware (RTX 3060 12 GB, 3060 Ti 8 GB, 4070).

@@ -207,7 +207,7 @@ to 32K costs nothing at this depth. VRAM: **7,284 MiB used, 422 MiB free** at 32
 **7,508 MiB used, 198 MiB free** at the golden 40,960.
 
 Full per-task figures at 40,960 — including prefill, TTFT and agent-run decode — are in
-[the battery results](#battery-results-at--c-40960--55-pass).
+[the battery results](#battery-results-at-c-40960-55-pass).
 
 ---
 
