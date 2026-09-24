@@ -1,0 +1,8 @@
+# The build only needs .devops/entrypoint.sh; everything else in this repo is
+# documentation, evidence and release tooling that would just slow the build.
+.git
+.github
+evidence
+scripts
+*.tar.gz
+*.sha256
