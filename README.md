@@ -112,10 +112,25 @@ docker compose up bonsai2-8gb
 ```
 
 That is the whole setup. The image ships no weights; on first start the entrypoint
-downloads the 5.85 GiB GGUF onto the `bonsai2-models` volume, verifies it against
-the checksum the model repo publishes, installs the calibrated
-`kv-mean-center.gguf` the image carries, and then serves on `:18199`. Subsequent
-starts reuse the volume and are ready in about six seconds.
+downloads the 5.85 GiB GGUF into the mounted directory, verifies it against the
+checksum the model repo publishes, installs the calibrated `kv-mean-center.gguf`
+the image carries, and then serves on `:18199`. Subsequent starts — including
+after an image update — reuse it and are ready in about six seconds.
+
+**Point it at a directory you already control** so nothing is downloaded twice:
+
+```bash
+cp .env.example .env
+# BONSAI2_MODELS_DIR=/home/you/models/bonsai2    # the directory serve.sh uses
+# BONSAI2_UID=$(id -u)  BONSAI2_GID=$(id -g)     # keep the files yours, not root's
+```
+
+`/models` is a **bind mount, not a named volume**, deliberately: a named volume
+also survives image updates, but it is opaque, so a container and a bare-metal
+`scripts/serve.sh` would each keep their own copy of the same 5.85 GiB GGUF and
+their own calibration bias. With a bind mount they share one. Verified: the
+container sees the host directory unchanged, logs neither a download nor a
+calibration, and the host files and their checksums are untouched afterwards.
 
 Everything is configured through `LLAMA_ARG_*` environment variables — the compose
 file spells out the 8 GB profile (`CTX 40960`, `q4_0` KV, MTP, `low`/`4096`
@@ -142,7 +157,7 @@ Notes on the image itself:
   `read:packages`
 
 To host the model yourself instead of downloading it, put the GGUF and its
-`kv-mean-center.gguf` in the volume and set `BONSAI2_AUTODOWNLOAD=0`.
+`kv-mean-center.gguf` in `BONSAI2_MODELS_DIR` and set `BONSAI2_AUTODOWNLOAD=0`.
 
 Building and promoting images is described in `.devops/`.
 

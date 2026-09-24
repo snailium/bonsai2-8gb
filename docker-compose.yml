@@ -57,11 +57,26 @@ services:
     image: ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:${BONSAI2_TAG:-server-dev}
     container_name: bonsai2-8gb
     restart: unless-stopped
+    # Anything the entrypoint creates — the downloaded GGUF, the computed bias —
+    # lands in the bind-mounted directory owned by whatever uid this runs as, and
+    # the default is root, which would leave root-owned files in your home
+    # directory.  Set BONSAI2_UID/BONSAI2_GID in .env to your own ids.  Everything
+    # the server reads is world-readable, so a non-root uid works.
+    user: "${BONSAI2_UID:-0}:${BONSAI2_GID:-0}"
     ports:
       - "18199:18199"
     volumes:
-      # weights + calibration bias; keeps 5.85 GiB out of the image layers
-      - bonsai2-models:/models
+      # Bind mount, not a named volume.  Image updates never touch either kind, so
+      # persistence across `docker compose pull && up` is not the reason.  The
+      # reason is sharing: a named volume is opaque and cannot be reused, so
+      # anyone who also runs scripts/serve.sh from the tarball would end up with a
+      # SECOND copy of the 5.85 GiB GGUF and its own calibration bias.
+      #
+      # Point BONSAI2_MODELS_DIR at the directory you already use (see
+      # .env.example); it defaults to ./models next to this file.  The directory
+      # must be writable: on the first start the entrypoint downloads the weights
+      # and calibrates the bias there if they are missing, and never again.
+      - ${BONSAI2_MODELS_DIR:-./models}:/models
     environment:
       # --- the 8 GB profile (validated: pp512 710, tg128 54.2) -------------
       LLAMA_ARG_CTX_SIZE: "40960"
@@ -102,11 +117,12 @@ services:
     image: ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:${BONSAI2_TAG:-server-dev}
     container_name: bonsai2-bigvram
     restart: unless-stopped
+    user: "${BONSAI2_UID:-0}:${BONSAI2_GID:-0}"
     profiles: ["bigvram"]              # `docker compose --profile bigvram up`
     ports:
       - "18200:18199"
     volumes:
-      - bonsai2-models:/models
+      - ${BONSAI2_MODELS_DIR:-./models}:/models
     environment:
       LLAMA_ARG_PORT: "18199"
       LLAMA_ARG_CTX_SIZE: "131072"     # 128K — unverified
@@ -127,6 +143,3 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-
-volumes:
-  bonsai2-models:
