@@ -150,12 +150,19 @@ claim, and the six full session logs (1.8 MB).
 ## Runtime requirements
 
 - NVIDIA driver (recent enough for your card) — **the CUDA toolkit is not needed**
-- CUDA runtime libraries from the system: `libcudart12`, `libcublas12`, `libgomp1`
-- glibc 2.35+
+- CUDA runtime libraries from the system: `libcudart12`, `libcublas12`, `libcublaslt12`,
+  `libgomp1`
+- **glibc 2.43+** — the binaries are built on Ubuntu 26.04 and carry a `GLIBC_2.43` symbol
+  requirement, so Ubuntu 24.04 (glibc 2.39) and older cannot run them. Verify any build with
+  `objdump -T bin/libggml-cuda.so.* | grep -o 'GLIBC_2\.[0-9]*' | sort -V | tail -1`.
 
 ```bash
-sudo apt install libcudart12 libcublas12 libgomp1
+sudo apt install libcudart12 libcublas12 libcublaslt12 libgomp1
 ```
+
+Mind the split: **the binaries are compiled with CUDA 13.1 but link the CUDA 12 runtime ABI**
+(`libcudart.so.12`, `libcublas.so.12`, `libcublasLt.so.12`). The system packages above are
+therefore the right ones — a CUDA 13 runtime is neither required nor sufficient on its own.
 
 Binaries carry `RUNPATH=$ORIGIN`, so the package is relocatable — move it
 anywhere and it still runs (verified).
