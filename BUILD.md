@@ -194,26 +194,31 @@ The binaries link the system CUDA runtime; the toolkit is not needed at run time
 but these are:
 
 ```bash
-sudo apt install libcudart12 libcublas12 libcublaslt12 libgomp1
+sudo apt install libcudart12 libcublas12 libgomp1
 ```
 
 Two things are easy to get wrong here:
 
-- **`libcublaslt12` is required** and is not always pulled in automatically —
-  `libggml-cuda.so` has a `NEEDED` entry for `libcublasLt.so.12`.
 - **The compiler is CUDA 13.1 but the runtime ABI is CUDA 12.** Every build in this
   repo is compiled with `/usr/local/cuda-13.1/bin/nvcc`, yet the produced
-  `libggml-cuda.so` links `libcudart.so.12` / `libcublas.so.12` / `libcublasLt.so.12`,
-  because the toolchain resolves those from the system packages. So a CUDA 13 runtime
-  is neither required nor sufficient on its own. Confirm with:
+  `libggml-cuda.so` links `libcudart.so.12` and `libcublas.so.12`, because the
+  toolchain resolves those from the system packages. So a CUDA 13 runtime is neither
+  required nor sufficient on its own. Confirm with:
 
   ```bash
   objdump -p bin/libggml-cuda.so.* | grep NEEDED | grep -E 'cudart|cublas'
   ```
 
-  **glibc floor is 2.43**, not 2.35 — the binaries carry a `GLIBC_2.43` symbol
+  `libcublasLt.so.12` is also needed at run time, but it arrives automatically:
+  `libcublas12` declares a dependency on `libcublaslt12`, and `libcublas` pulls the
+  `libcublasLt` soname in transitively. Installing the three packages above is
+  therefore enough — verified by running the universal binary in a bare
+  `ubuntu:26.04` container with only those three and `--gpus all`: zero missing
+  dependencies and the GPU enumerates.
+
+- **glibc floor is 2.43**, not 2.35 — the binaries carry a `GLIBC_2.43` symbol
   requirement (see Trap 2 for why the build host has it), which rules out Ubuntu
-  24.04 and older as a run-time base:
+  24.04 (2.39) and older as a run-time base:
 
   ```bash
   objdump -T bin/libggml-cuda.so.* | grep -o 'GLIBC_2\.[0-9]*' | sort -V | tail -1
