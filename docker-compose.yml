@@ -54,7 +54,7 @@ version: "3.8"
 
 services:
   bonsai2-8gb:
-    image: ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:${BONSAI2_TAG:-server-dev}
+    image: ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:${BONSAI2_TAG:-stable}
     container_name: bonsai2-8gb
     restart: unless-stopped
     # Anything the entrypoint creates — the downloaded GGUF, the computed bias —
@@ -114,7 +114,7 @@ services:
   # changes, not as a recommendation.  Raise CTX only as far as the card allows
   # and re-check with `nvidia-smi` during load.
   bonsai2-bigvram:
-    image: ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:${BONSAI2_TAG:-server-dev}
+    image: ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:${BONSAI2_TAG:-stable}
     container_name: bonsai2-bigvram
     restart: unless-stopped
     user: "${BONSAI2_UID:-0}:${BONSAI2_GID:-0}"

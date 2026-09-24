@@ -104,12 +104,18 @@ See **[RECIPE.md](RECIPE.md)** for the full flag list and why each one matters.
 ## Docker
 
 ```
-ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:server-dev
+ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:stable
 ```
 
 ```bash
 docker compose up bonsai2-8gb
 ```
+
+Two channels: **`stable`** is moved only after the image has been run on real
+hardware, and is the default; **`server-dev`** tracks the newest CI build, which is
+checked (its pinned tarball digest is verified against the release) but not run on
+a GPU. Dated tags such as `server-dev-b11158-1-20260924-2006` are immutable and
+are what `stable` is promoted from.
 
 That is the whole setup. The image ships no weights; on first start the entrypoint
 downloads the 5.85 GiB GGUF into the mounted directory, verifies it against the
