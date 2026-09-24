@@ -13,6 +13,14 @@ Served at **`-c 40960`** with MTP, which is the largest context this card loads.
 Current release: **[v1.1.0](https://github.com/snailium/bonsai2-8gb/releases/tag/v1.1.0)**
 (built from `285542d`). v1.0.0 is the older `dcc3be7` build — same decode, half the prefill.
 
+The releases are built from the fork's own branch, which is pinned to a fork commit.
+A second branch carrying the **same kernel on top of current upstream mainline** is
+published as **[`snailium/bonsai2-mainline`](https://github.com/snailium/bonsai2-mainline)**
+(`main`, 120 commits, linear) — **pp512 709.9 (+4.2%), tg128 54.1 (parity)**, same 40K
+context and 12 MiB *less* VRAM. Read **[REBASE.md](REBASE.md)** before using it: it
+records the method, the six structural defects the merge produced, and the two Metal
+and Vulkan gaps that are still open.
+
 | Workload | this build + MTP | acceptance |
 | --- | ---: | ---: |
 | code | 70.7 tok/s | 0.85 |
@@ -32,6 +40,7 @@ scripts/bench.sh          reproduce the kernel benchmark
 scripts/make-kv-bias.sh   generate the required KV calibration bias
 RECIPE.md                 every flag and why, per-task measurements, 12 caveats
 BUILD.md                  rebuild for any GPU, and the three build traps
+REBASE.md                 how the fork was replayed onto upstream mainline, and what broke
 evidence/                 scripts + raw output + session logs for every claim
 ```
 
@@ -60,6 +69,13 @@ Built from [`sudoingX/llama.cpp`](https://github.com/sudoingX/llama.cpp) branch
 from a newer commit you get it without patching. See
 [BUILD.md](BUILD.md#what-is-actually-in-this-branch) for the full commit list and how this
 branch relates to `PrismML-Eng/llama.cpp`.
+
+The paragraph above describes the `dcc3be7` layer (v1.0.0). The `285542d` layer that
+v1.1.0 is built from is a different set of ten commits — the PTQ1_0 mat-vec kernel, the
+planar-transposed activation layout it consumes, the four-column cap with the shared-memory
+budget, and `GGML_CUDA_BATCH_INVARIANT`. Those ten are what
+[`snailium/bonsai2-mainline`](https://github.com/snailium/bonsai2-mainline) replays onto
+mainline; [REBASE.md](REBASE.md) has the per-file record.
 
 ## Quick start
 
