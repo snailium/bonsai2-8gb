@@ -188,10 +188,16 @@ model — it produces repetition loops. Use **1.5** (instruct mode, thinking off
 
 `llama-bench -ngl 99 -fa 1 -ctk q4_0 -ctv q4_0 -p 512 -n 128 -r 3 -d 0`:
 
-| Build | tg128 |
-| --- | ---: |
-| stock PrismML `b10685` release | 39.56 |
-| **this package** | **54.31** (+37%) |
+| Build | pp512 | tg128 |
+| --- | ---: | ---: |
+| stock PrismML `b10685` release | ~267 | 39.56 |
+| v1.0.0 (`dcc3be7`) | 349.42 | 54.31 (+37%) |
+| **v1.1.0 (`285542d`)** | **679.88** | **54.28** |
+
+**Prefill doubled in v1.1.0** (PR #214, the branch-free MMQ tile loader); decode is
+deliberately unchanged — #214 states the MMVQ path is untouched. This matters for agent
+work, where every turn re-prefills the whole prompt once context trimming invalidates the
+cache: ~72 s per tool call at 349 pp512 becomes ~37 s.
 
 Server-side decode with MTP, `GGML_CUDA_BATCH_INVARIANT=1`, short prompts, measured at
 `-c 32768` (context depth barely affects short-prompt decode at this size):
@@ -465,7 +471,7 @@ reasoning path (thinking off collapses into `content`). **Keep MTP enabled.**
 
 ## Environment notes
 
-- Built from `sudoingX/llama.cpp` branch **`bonsai2`** at commit **`dcc3be7`** =
+- Built from `sudoingX/llama.cpp` branch **`bonsai2`** at commit **`285542d`** =
   PrismML `prism @ 9a9394a` + ten commits. Of those, the **PTQ1_0 kernel
   ([#218](https://github.com/PrismML-Eng/llama.cpp/pull/218)) is still unmerged** and is
   the piece you cannot get elsewhere; the qwen35 MTP Hadamard fix already landed upstream

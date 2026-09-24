@@ -3,11 +3,15 @@
 Prebuilt **llama.cpp binaries for Ternary Bonsai 2 27B** on 8 GB NVIDIA cards,
 with working MTP speculative decoding.
 
-**Measured: 54.3 tok/s kernel-only, 65–73 tok/s with MTP** on an RTX 5060 8 GB.
-The stock PrismML release binary gives 39.6 tok/s on the same card — **+37% from the
-kernel alone**, plus another **+18–35% from MTP**.
+**Measured: 54.3 tok/s kernel-only, 65–73 tok/s with MTP, pp512 680** on an RTX 5060 8 GB.
+The stock PrismML release binary gives 39.6 tok/s decode and 267 pp512 on the same class of
+card — **+37% decode from the kernel**, **+95% prefill** from the MMQ tile work, plus
+another **+18–35% from MTP**.
 
 Served at **`-c 40960`** with MTP, which is the largest context this card loads.
+
+Current release: **[v1.1.0](https://github.com/snailium/bonsai2-8gb/releases/tag/v1.1.0)**
+(built from `285542d`). v1.0.0 is the older `dcc3be7` build — same decode, half the prefill.
 
 | Workload | this build + MTP | acceptance |
 | --- | ---: | ---: |
@@ -87,14 +91,9 @@ See **[RECIPE.md](RECIPE.md)** for the full flag list and why each one matters.
 
 Two release assets — pick the one matching your card:
 
-| Asset | Architecture | Size | Use when |
-| --- | --- | ---: | --- |
-| `bonsai2-universal.tar.gz` | sm_75 → sm_120 | 314 MB | **any CUDA card** — Turing, Ampere, Ada, Hopper, Blackwell |
-| `bonsai2-5060-sm120-only.tar.gz` | sm_120 only | 147 MB | RTX 50-series only |
-
-Both behave identically on a Blackwell card. The universal build embeds native
-cubins **and** PTX for all eight architectures, so one binary works everywhere —
-verified:
+One asset since v1.1.0: **`bonsai2-universal.tar.gz`** (313 MB) — any CUDA card, Turing
+through Blackwell. It embeds native cubins **and** PTX for all eight architectures, so one
+binary works everywhere — verified:
 
 ```
 $ cuobjdump --list-elf bin/libggml-cuda.so.0.21.0

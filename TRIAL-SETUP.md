@@ -9,14 +9,33 @@ stock PrismML release (`build 10685`, `-c 49152`, thinking off).
 
 | | before | now |
 | --- | --- | --- |
-| binary | `~/bonsai2/bin` — `7dffb158d` (build 10685, stock) | `~/bonsai2/src/build/bin` — **`dcc3be7`** (build 67) |
+| binary | `~/bonsai2/bin` — `7dffb158d` (build 10685, stock) | `~/bonsai2/src/build-new/bin` — **`285542d`** (build 238) |
 | context | 49152 | **40960** |
 | reasoning | `off` | **`low` + budget 4096** |
 | MTP | none | **`draft-mtp --spec-draft-n-max 1`** |
 | restart | `no` | **`always`**, 10 s backoff |
 | linger | no | **yes** (survives logout/reboot) |
 
-Backup of the old unit: `~/.config/systemd/user/bonsai-serve.service.bak-20260923-134347`
+Backups of the old units: `bonsai-serve.service.bak-20260923-134347` (stock release) and
+`bonsai-serve.service.bak-before-newbuild-*` (dcc3be7).
+
+### Why 285542d: prefill doubled
+
+Upgrading from `dcc3be7` to `origin/bonsai2 @ 285542d` picked up
+[#214](https://github.com/PrismML-Eng/llama.cpp/pull/214), the branch-free MMQ tile loader.
+Measured on this card, identical flags, idle GPU:
+
+| | `dcc3be7` | `285542d` | delta |
+| --- | ---: | ---: | ---: |
+| **pp512** | 349.42 ± 2.94 | **679.88 ± 10.23** | **+94.6%** |
+| tg128 | 54.34 ± 0.13 | 54.28 ± 0.13 | unchanged |
+
+**Prefill is 1.95x faster; decode is unchanged**, exactly as #214 states ("the MMVQ path is
+untouched"). This matters because every agent turn re-prefills the whole prompt when
+context trimming invalidates the cache — the ~72 s/turn we measured should now be ~37 s.
+
+Nine of our ten patches were already in `origin/bonsai2`; only the MTP Hadamard fix
+differed, and that landed upstream as #205. So nothing was lost in the move.
 
 ```bash
 # status / logs / restart

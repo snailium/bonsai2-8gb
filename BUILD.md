@@ -39,14 +39,15 @@ Two things differ from upstream:
 
 ```
 git clone -b bonsai2 https://github.com/sudoingX/llama.cpp
-cd llama.cpp && git log --oneline -1   # expect dcc3be7
+cd llama.cpp && git log --oneline -1   # expect 285542d
 ```
 
 ## What is actually in this branch
 
-`bonsai2 @ dcc3be7` is **not** a divergent fork. It is ten commits stacked on
-`PrismML-Eng/llama.cpp` `prism @ 9a9394a` (2026-09-18), the commit both share as
-merge-base. Verified with `git merge-base`; the whole delta is **9 files, +653 −21**.
+`bonsai2` is **not** a divergent fork. It is commits stacked on `PrismML-Eng/llama.cpp`
+`prism`. At `dcc3be7` (our original build) the merge-base was `prism @ 9a9394a` and the
+delta was ten commits; the current `bonsai2` head is **`285542d`**, which adds the #214
+MMQ tile work on top. Verified with `git merge-base`; the whole delta is **9 files, +653 −21**.
 
 | PR | what it does | upstream? |
 | --- | --- | --- |
@@ -76,9 +77,11 @@ tests/test-backend-ops.cpp            +28
   because `dcc3be7` predates the merge.
 - **The decode gain still requires this branch (#218).** Without it you get the stock
   39.6 tok/s, not 54.3.
-- **`dcc3be7` was rebased afterwards.** The current `bonsai2` head is `285542d`, which
-  is *29 commits ahead and 10 behind* our commit — not a fast-forward. A plain
-  `git pull` will not land you there cleanly.
+- **`dcc3be7` was rebased afterwards.** The current `bonsai2` head is `285542d`
+  (*29 ahead, 10 behind* `dcc3be7`) — not a fast-forward, so a plain `git pull` will not
+  land you there cleanly. Check out `origin/bonsai2` instead. Nine of our ten patches were
+  already in it; only the MTP Hadamard fix differed, and that landed upstream as #205, so
+  nothing is lost in the move.
 
 ### A limitation worth stating precisely
 
