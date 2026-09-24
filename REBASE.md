@@ -32,30 +32,36 @@ Published as `main` in `snailium/bonsai2-mainline`.
 ## Mapping back to the original commits
 
 A rebase rewrites every SHA, so each carried-over commit records where it came
-from in a trailer:
+from, using git's own cherry-pick notation plus the source repository:
 
 ```
-Original-Commit: 01fd9521c92e7882a3fa1083bb933e3bd9305bef
+(cherry picked from commit 01fd9521c92e7882a3fa1083bb933e3bd9305bef)
+Source-Repo: https://github.com/PrismML-Eng/llama.cpp
 ```
 
-119 of the 120 commits carry one — the 109 fork commits and our 10. The
-`reconcile` commit is new work and has none.
+The parenthetical line is what `git cherry-pick -x` writes, and what GitHub and
+GitLab linkify. `Source-Repo` names the repository the commit was carried from:
+`PrismML-Eng/llama.cpp` for the 109 fork commits, `sudoingX/llama.cpp` for our 10,
+branch `prism` and `bonsai2` respectively.
+
+119 of the 120 commits carry it — the `reconcile` commit is new work and has
+neither line.
 
 ```bash
-# new SHA -> original SHA -> subject, in history order
-git log --reverse --topo-order \
-  --format='%h  %(trailers:key=Original-Commit,valueonly)  %s' upstream/master..main
+# every mapping, in history order: new SHA, subject, provenance
+git log --reverse --topo-order --format='%h %s%n%b' upstream/master..main \
+  | grep -E '^[0-9a-f]+ |^\(cherry picked from commit|^Source-Repo:'
 
-# locate the rebased commit that came from a given original
-git log --format='%h %s' --grep='Original-Commit: 01fd9521c92e7882a3fa1083bb933e3bd9305bef'
+# find the rebased commit that came from a given original SHA
+git log --format='%h %s' --grep='(cherry picked from commit 01fd9521c92e7882a3fa1083bb933e3bd9305bef)'
 
-# the original SHAs alone
-git log --format='%(trailers:key=Original-Commit,valueonly)' upstream/master..main | grep .
+# which repository each commit came from, read back as a trailer
+git log --format='%h %(trailers:key=Source-Repo,valueonly) %s' upstream/master..main
 ```
 
 The original SHAs do not exist in this repository — a rebase creates new commits.
-They identify the pre-rebase commits in `PrismML-Eng/llama.cpp` (the 109) and in
-`sudoingX/llama.cpp` branch `bonsai2` (the 10).
+They identify the pre-rebase commits in `PrismML-Eng/llama.cpp` and in
+`sudoingX/llama.cpp` branch `bonsai2`.
 
 ### Ordering trap
 
@@ -63,7 +69,7 @@ Positional mapping is only safe under `--topo-order`. Plain `git rev-list` order
 by committer date, and a rebase stamps every replayed commit with essentially the
 same committer date, so date order does not follow the parent chain. The naive
 mapping produced **26 wrong pairs out of 119** before this was caught;
-`--topo-order` gives 0. The trailer pass verifies the mapping independently and
+`--topo-order` gives 0. The provenance pass verifies the mapping independently and
 also asserts that the rewritten tip has the byte-identical tree
 (`4df9dd5f742755a54d919dd8a6dfda91091be302`), so only messages changed.
 
