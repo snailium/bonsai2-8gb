@@ -19,8 +19,21 @@ on:
   push:
     branches: [main]
     paths:
-      - '.devops/**'
-      - 'docker-compose.yml'
+      # Only the things that change the built image, plus this workflow itself.
+      # Deliberately NOT the whole of .devops/: build-image.sh and
+      # promote-image.sh are local helpers that the image does not contain, so
+      # editing them must not publish a new image.
+      #
+      # .dockerignore IS listed: it changes the build context, so leaving it out
+      # would let an image-affecting change ship without a rebuild.
+      #
+      # docker-compose.yml is deliberately absent — it configures how the image is
+      # run and does not go into it.  A YAML edit is not a reason to publish a new
+      # image; validate it locally with `docker compose config`.
+      - '.devops/cuda.Dockerfile'
+      - '.devops/entrypoint.sh'
+      - '.devops/VERSION'
+      - '.dockerignore'
       - '.github/workflows/build.yml'
   workflow_dispatch:
     inputs:
