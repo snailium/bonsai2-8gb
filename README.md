@@ -101,6 +101,53 @@ See **[RECIPE.md](RECIPE.md)** for the full flag list and why each one matters.
 
 ---
 
+## Docker
+
+```
+ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:server-dev
+```
+
+```bash
+docker compose up bonsai2-8gb
+```
+
+That is the whole setup. The image ships no weights; on first start the entrypoint
+downloads the 5.85 GiB GGUF onto the `bonsai2-models` volume, verifies it against
+the checksum the model repo publishes, installs the calibrated
+`kv-mean-center.gguf` the image carries, and then serves on `:18199`. Subsequent
+starts reuse the volume and are ready in about six seconds.
+
+Everything is configured through `LLAMA_ARG_*` environment variables — the compose
+file spells out the 8 GB profile (`CTX 40960`, `q4_0` KV, MTP, `low`/`4096`
+thinking) and each one can be overridden per service. A second service demonstrates
+a larger-memory configuration; it is **not** something we have validated — see the
+comment in `docker-compose.yml`.
+
+**The card must be idle.** The validated 8 GB configuration loads at 7496 MiB of
+7704 usable, so a desktop session on the same GPU will push it over and the server
+exits while "initializing the context".
+
+Notes on the image itself:
+
+- based on `ubuntu:26.04`, because the binaries require **glibc ≥ 2.43**; 24.04
+  (glibc 2.39) cannot run them
+- the CUDA toolkit is not installed and not needed — the binaries link the CUDA 12
+  runtime ABI and only want `libcudart12`, `libcublas12`, `libgomp1`
+- one image for every CUDA card: it contains native cubins **and** PTX for
+  `sm_75 … sm_120`, so the per-VRAM tuning is a compose concern, not an image one
+- it installs the prebuilt universal tarball from
+  [`snailium/bonsai2-mainline`](https://github.com/snailium/bonsai2-mainline) and
+  checks its SHA-256, so the binaries in the image are the ones that were measured
+- if GHCR asks for authentication, `docker login ghcr.io` with a token that has
+  `read:packages`
+
+To host the model yourself instead of downloading it, put the GGUF and its
+`kv-mean-center.gguf` in the volume and set `BONSAI2_AUTODOWNLOAD=0`.
+
+Building and promoting images is described in `.devops/`.
+
+---
+
 ## Read these before filing a bug
 
 ### Which binary
