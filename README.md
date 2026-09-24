@@ -40,6 +40,7 @@ scripts/bench.sh          reproduce the kernel benchmark
 scripts/make-kv-bias.sh   generate the required KV calibration bias
 RECIPE.md                 every flag and why, per-task measurements, 12 caveats
 BUILD.md                  rebuild for any GPU, and the three build traps
+DOCKER.md                 step-by-step: pull, configure, up, verify, troubleshoot
 REBASE.md                 how the fork was replayed onto upstream mainline, and what broke
 evidence/                 scripts + raw output + session logs for every claim
 ```
@@ -110,6 +111,11 @@ ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:stable
 ```bash
 docker compose up bonsai2-8gb
 ```
+
+**[DOCKER.md](DOCKER.md) walks through it end to end** — prerequisites including the
+nvidia-container-toolkit setup, which two lines to change in `.env`, what the first
+start does, how to verify, all the parameters and why, and the failure modes we
+actually hit while building this.
 
 Two channels: **`stable`** is moved only after the image has been run on real
 hardware, and is the default; **`server-dev`** tracks the newest CI build, which is
