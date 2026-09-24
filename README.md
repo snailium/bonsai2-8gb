@@ -41,11 +41,21 @@ tar xzf bonsai2-universal.tar.gz && cd bonsai2-universal
 tarball's purpose, not its filename.)
 
 Built from [`sudoingX/llama.cpp`](https://github.com/sudoingX/llama.cpp) branch
-**`bonsai2`** at commit **`dcc3be7`** — the PrismML fork plus three unmerged fixes:
+**`bonsai2`** at commit **`dcc3be7`** — the PrismML fork plus ten commits:
 
-- **PR #218** — dedicated PTQ1_0 mat-vec kernel (the +37%)
-- **PR #217 / #205** — qwen35 MTP Hadamard-embedding fix (without it MTP won't start)
-- **PR #220** — GATED_DELTA_NET gather fusion
+- **PTQ1_0 mat-vec kernel** ([PR #218](https://github.com/PrismML-Eng/llama.cpp/pull/218),
+  468 lines, a new file) — **the +37% decode**. *Still unmerged upstream*, so this is the
+  one piece you cannot get without this branch.
+- **qwen35 MTP Hadamard fix** ([PR #205](https://github.com/PrismML-Eng/llama.cpp/pull/205),
+  merged 2026-09-21) — without it the MTP draft context fails to start. Landing upstream
+  already; our branch carries its own copy because `dcc3be7` predates the merge.
+- **GATED_DELTA_NET gather fusion**
+  ([PR #220](https://github.com/PrismML-Eng/llama.cpp/pull/220)) — *still open upstream*.
+
+**Only #218 and #220 are not upstream.** The MTP fix is already in `prism`; if you build
+from a newer commit you get it without patching. See
+[BUILD.md](BUILD.md#what-is-actually-in-this-branch) for the full commit list and how this
+branch relates to `PrismML-Eng/llama.cpp`.
 
 ## Quick start
 

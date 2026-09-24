@@ -34,17 +34,63 @@ Two things differ from upstream:
 1. **The source is a fork.** Bonsai 2's ternary `PTQ1_0`/`PQ2_0` types and its
    Hadamard-rotated weight basis are not in mainline llama.cpp. Stock llama.cpp
    rejects these files, or worse, loads a `Q2_0` file and emits gibberish.
-2. **The branch carries three unmerged fixes** that matter for performance and
-   for MTP:
-   - PR #218 — dedicated PTQ1_0 mat-vec kernel (**+37% decode**, no extra VRAM)
-   - PR #217 / #205 — qwen35 MTP Hadamard-embedding fix (without it the MTP
-     context fails to initialise)
-   - PR #220 — GATED_DELTA_NET gather fusion
+2. **The branch carries ten commits on top of `PrismML-Eng/llama.cpp`** — two of
+   which are not upstream. See the next section for the exact list.
 
 ```
 git clone -b bonsai2 https://github.com/sudoingX/llama.cpp
 cd llama.cpp && git log --oneline -1   # expect dcc3be7
 ```
+
+## What is actually in this branch
+
+`bonsai2 @ dcc3be7` is **not** a divergent fork. It is ten commits stacked on
+`PrismML-Eng/llama.cpp` `prism @ 9a9394a` (2026-09-18), the commit both share as
+merge-base. Verified with `git merge-base`; the whole delta is **9 files, +653 −21**.
+
+| PR | what it does | upstream? |
+| --- | --- | --- |
+| [#218](https://github.com/PrismML-Eng/llama.cpp/pull/218) | PTQ1_0 mat-vec kernel — **the +37% decode** | **no, open** |
+| [#220](https://github.com/PrismML-Eng/llama.cpp/pull/220) | GATED_DELTA_NET gather fusion | **no, open** |
+| [#205](https://github.com/PrismML-Eng/llama.cpp/pull/205) | qwen35 MTP Hadamard fix | **yes** — merged 2026-09-21 (`422590f5d`) |
+| [#210](https://github.com/PrismML-Eng/llama.cpp/pull/210) | dflash borrowed-Hadamard fix | **yes** — merged 2026-09-21 |
+| [#217](https://github.com/PrismML-Eng/llama.cpp/pull/217) | *same fix as #205* | closed as duplicate, not rejected |
+
+Files touched:
+
+```
+ggml/src/ggml-cuda/mmvq-ptq1_0.cuh   +468   new: the PTQ1_0 mat-vec kernel
+ggml/src/ggml-cuda/mmvq.cu           +103   dispatch: 1-4 columns take the new path
+ggml/src/ggml-cuda/quantize.cu        +29
+src/models/qwen35.cpp                 +15   the MTP Hadamard fix
+ggml/src/ggml-cuda/common.cuh         +12   GGML_CUDA_BATCH_INVARIANT
+ggml/src/ggml-cuda/fattn*.cu(h)       +11   batch-invariance for attention
+ggml/src/ggml-cuda/mmvf.cu             +8   bf16 small-batch mat-vec
+tests/test-backend-ops.cpp            +28
+```
+
+### What that means if you build your own
+
+- **The MTP fix is no longer something you need this branch for.** It landed as #205.
+  Building from any `prism` commit after 2026-09-21 gets it. Our copy is a duplicate
+  because `dcc3be7` predates the merge.
+- **The decode gain still requires this branch (#218).** Without it you get the stock
+  39.6 tok/s, not 54.3.
+- **`dcc3be7` was rebased afterwards.** The current `bonsai2` head is `285542d`, which
+  is *29 commits ahead and 10 behind* our commit — not a fast-forward. A plain
+  `git pull` will not land you there cleanly.
+
+### A limitation worth stating precisely
+
+The `GGML_CUDA_BATCH_INVARIANT` guarantee is **not whole-model**, per its own source
+comment in `common.cuh`: it covers the F16/BF16 mat-vec paths, the PTQ1_0 mat-vec, and
+flash attention up to 8 queries. Within those, a token decoded alone and one verified in
+a speculative batch produce bit-identical logits; 5–8 columns agree with each other but
+can differ from 1–4. Other weight types and attention shapes can still pick
+batch-dependent kernels.
+
+So "MTP is lossless" holds on the covered paths, which is where this model runs — not as
+a blanket property of the build.
 
 ## Three traps nobody documents together
 

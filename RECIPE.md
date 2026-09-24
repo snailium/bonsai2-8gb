@@ -465,9 +465,12 @@ reasoning path (thinking off collapses into `content`). **Keep MTP enabled.**
 
 ## Environment notes
 
-- Built from `sudoingX/llama.cpp` branch **`bonsai2`** at commit **`dcc3be7`**,
-  which is PrismML fork `prism` + the PTQ1_0 kernel (PR #218) + the qwen35 MTP
-  Hadamard-embedding fix (PR #217 / #205).
+- Built from `sudoingX/llama.cpp` branch **`bonsai2`** at commit **`dcc3be7`** =
+  PrismML `prism @ 9a9394a` + ten commits. Of those, the **PTQ1_0 kernel
+  ([#218](https://github.com/PrismML-Eng/llama.cpp/pull/218)) is still unmerged** and is
+  the piece you cannot get elsewhere; the qwen35 MTP Hadamard fix already landed upstream
+  as [#205](https://github.com/PrismML-Eng/llama.cpp/pull/205). Full list:
+  [BUILD.md](BUILD.md#what-is-actually-in-this-branch).
 - `pushd`/`cd` into `bin/` before running, or use the scripts.
 - Ports: this recipe uses **18199**. Avoid 8080 — on some systems it is taken.
 
