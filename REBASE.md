@@ -19,7 +19,8 @@ replayed onto mainline HEAD `3423f940`.
 
 ## Result
 
-`merge-v3` is **120 commits, linear, on `upstream/master`**:
+`merge-v3` is **120 commits, linear**, based on upstream commit **`3423f940`**
+(llama.cpp `b11158`):
 
 ```
 109  PrismML fork commits   (5ea87ddad..prism/prism)
@@ -28,6 +29,31 @@ replayed onto mainline HEAD `3423f940`.
 ```
 
 Published as `main` in `snailium/bonsai2-mainline`.
+
+### The exact base, and why it is pinned
+
+The base is `3423f940` — the commit the tree was built and measured on. It is
+recorded because `upstream/master` keeps moving: it has since advanced by five
+commits that this branch deliberately does not carry.
+
+```
+$ git merge-base main upstream/master
+3423f940...          # our base, not the current tip
+
+$ git log --oneline 3423f940..fc343a84b      # what upstream gained meanwhile
+fc343a84b llama: add llama_batch_ext (#24669)
+308883b33 server : change default pytest workers to 4 (#29376)
+70596c4dc ci : use hf-jobs-cpu-performance, disable pytest workers (#29369)
+70c4e1582 vulkan: int8 coopmat1 matmul implementation for AMD RDNA3 and RDNA4 (#27952)
+6b790a9c2 vulkan: handle misalignment in conv_2d and conv_3d (#29365)
+```
+
+None of these touch the CUDA path this build uses: two are Vulkan, one is a
+llama API addition, two are CI/test configuration. Taking them would mean
+re-resolving conflicts and re-running the whole validation for no gain, so the
+branch stays on `3423f940` and the gap is stated here instead of being hidden.
+When upstream ships something that does benefit the CUDA/ternary path, that is
+the moment to rebase again.
 
 ## Mapping back to the original commits
 
@@ -69,9 +95,34 @@ Positional mapping is only safe under `--topo-order`. Plain `git rev-list` order
 by committer date, and a rebase stamps every replayed commit with essentially the
 same committer date, so date order does not follow the parent chain. The naive
 mapping produced **26 wrong pairs out of 119** before this was caught;
-`--topo-order` gives 0. The provenance pass verifies the mapping independently and
-also asserts that the rewritten tip has the byte-identical tree
-(`4df9dd5f742755a54d919dd8a6dfda91091be302`), so only messages changed.
+`--topo-order` gives 0.
+
+### Re-parenting trap
+
+Adding the trailers rewrites every commit, so the rewrite must be
+**parent-preserving**: the parent of the first rebuilt commit has to be that
+commit's own parent, taken from the commit itself.
+
+The first attempt instead used `git rev-parse upstream/master` as that parent.
+`upstream/master` had been updated by a fetch in the meantime, so the whole branch
+was silently re-parented onto a *newer* upstream commit than the tree was built
+from. Nothing looked wrong — the tree was byte-identical, the commit count above
+the new base was still 120, and the push succeeded — but the branch then claimed a
+base whose commits it did not contain, which **reverted five upstream commits**
+(`fc343a84b..branch` showed ~2,600 lines of deletions that nobody intended).
+
+What caught it was asking for the merge base:
+
+```
+$ git merge-base main upstream/master
+fc343a84b          # WRONG: newer than the base the tree came from
+```
+
+The rewrite now derives the parent from the first commit, and asserts three
+invariants afterwards: the tree is identical, the commit count above the base is
+unchanged, and the first commit's parent equals that base. The corrected branch
+reports `3423f940` as its merge base with `upstream/master`, and the five upstream
+commits are simply absent — visible and expected — instead of silently reverted.
 
 ## Method
 
