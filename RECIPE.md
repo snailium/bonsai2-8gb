@@ -223,6 +223,49 @@ Two things make this failure mode worth knowing about:
 **Therefore: K=1 at `-c 40960` (the shipped configuration). K=2 only if you drop the
 context — at 32768 it fits with ~1.4 GiB to spare.**
 
+### dflash: it runs, but not competitively on 8 GB
+
+Tested with PrismML's official weights (`prism-ml/Ternary-Bonsai-2-27B-gguf`,
+`Ternary-Bonsai-2-27B-PTQ1_0.gguf`) and ggml-org's official DFlash drafter
+(`ggml-org/Qwen3.8-27B-GGUF`, `dflash-Qwen3.8-27B-Q4_0.gguf`, 1.02 GiB). Note the
+drafter is a **file inside ggml-org's Qwen3.8-27B repo, not a separate repository** —
+a model-level Hugging Face search (`?author=ggml-org&search=dflash`) returns nothing
+even though the file exists.
+
+The runtime accepts it: `arch = dflash`, `dflash.target_layers = [6, 20, 34, 48, 62]`,
+and the implementation registers as `draft-dflash` with
+`block_size=8, n_extract=5, sample_from_anchor=true, lineage=dfl…`.
+
+Two things stop it before it serves:
+
+1. **`LLAMA_ARG_SPEC_TYPE=draft-mtp` together with a CLI `--spec-type draft-dflash`
+   leaves MTP in the type list**, and `common/speculative.cpp` then sets the draft
+   context to `LLAMA_CONTEXT_TYPE_MTP` whenever MTP is present in that list. A dflash
+   drafter therefore fails with `context type MTP requested but model doesn't
+   contain MTP layers`. Set the speculative type **once** — environment or CLI, never
+   both.
+2. **The drafter does not fit on the GPU.** Its weights (1033 MiB) plus its context
+   (549 MiB) need ~1.6 GiB more than an 8 GB card has left once the main model and
+   the KV cache are loaded. Measured: main model + KV alone is 6704 MiB at `-c 8192`
+   and 7244 MiB at `-c 32768`. It dies with `cudaMalloc failed: out of memory` while
+   creating the drafter's context.
+
+With `LLAMA_ARG_N_GPU_LAYERS_DRAFT=0` — drafter on the CPU — it serves at both
+contexts, and the numbers are the interesting part:
+
+| configuration | decode | draft acceptance | VRAM |
+| --- | ---: | ---: | ---: |
+| dflash, drafter on CPU, `-c 32768` | 23.97 tok/s | 52.4 % | 7244 MiB |
+| dflash, drafter on CPU, `-c 8192` | 22.13 tok/s | 41.7 % | 6704 MiB |
+| **MTP, K=1 (shipped), `-c 40960`** | **54–67 tok/s** | **86–89 %** | 7496 MiB |
+
+**Verdict: dflash is supported and works, but on an 8 GB card it is about 2.4x
+slower than the MTP head that ships with this model**, because the drafter has to
+run on the CPU and CPU drafting becomes the bottleneck — acceptance drops to 42–52 %
+as well. It is not a reason to change the shipped configuration. On a card with
+roughly 2 GiB more headroom the drafter would fit on the GPU, and the comparison
+would be worth repeating there.
+
 ### Sampling
 
 The template's `presence_penalty` default is `0.0`, which is wrong for this
