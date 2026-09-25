@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公元996年 - 1024年 · 世界大事纪</title>
+    <style>
+        :root {
+            --bg: #f7f5f0;
+            --card-bg: #ffffff;
+            --ink: #2c2a26;
+            --muted: #8a8378;
+            --accent: #b04a2e;
+            --accent-dark: #8c3a22;
+            --gold: #c9a227;
+            --line: #e5e0d6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Source Han Serif SC", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+            background: var(--bg);
+            color: var(--ink);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* 顶部装饰 */
+        .top-bar {
+            height: 8px;
+            background: linear-gradient(90deg, var(--accent), var(--gold));
+        }
+
+        header {
+            text-align: center;
+            padding: 64px 20px 32px;
+            position: relative;
+        }
+
+        .header-ornament {
+            font-size: 1.5rem;
+            color: var(--gold);
+            letter-spacing: 8px;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 1.05rem;
+            letter-spacing: 2px;
+        }
+
+        .date-range {
+            display: inline-block;
+            margin-top: 24px;
+            padding: 8px 28px;
+            border: 1px solid var(--line);
+            background: var(--card-bg);
+            font-size: 0.95rem;
+            letter-spacing: 3px;
+            color: var(--accent-dark);
+        }
+
+        /* 时间轴 */
+        .timeline {
+            max-width: 860px;
+            margin: 48px auto 80px;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, var(--gold), var(--accent));
+            transform: translateX(-50%);
+        }
+
+        .event {
+            position: relative;
+            margin-bottom: 48px;
+            padding-left: 24px;
+        }
+
+        .event:nth-child(odd) {
+            text-align: right;
+            padding-right: 24px;
+            padding-left: 0;
+        }
+
+        .event:nth-child(even) {
+            text-align: left;
+        }
+
+        /* 年份标记 */
+        .year-badge {
+            display: inline-block;
+            background: var(--card-bg);
+            border: 2px solid var(--accent);
+            color: var(--accent-dark);
+            font-size: 1.35rem;
+            font-weight: 700;
+            padding: 6px 18px;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 年份圆点 */
+        .year-badge::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+
+        .event:nth-child(odd) .year-badge::after { right: -23px; }
+        .event:nth-child(even) .year-badge::after { left: -23px; }
+
+        /* 事件卡片 */
+        .event-card {
+            background: var(--card-bg);
+            border-left: 4px solid var(--gold);
+            padding: 18px 20px;
+            margin-top: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .event:nth-child(odd) .event-card {
+            border-left: none;
+            border-right: 4px solid var(--gold);
+        }
+
+        .region-tag {
+            display: inline-block;
+            font-size: 0.78rem;
+            padding: 3px 10px;
+            background: #f3efe6;
+            color: var(--muted);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .event-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--ink);
+        }
+
+        .event-desc {
+            font-size: 0.95rem;
+            color: #4a463f;
+        }
+
+        /* 分类色块 */
+        .tag-war { background: #fde8e2; color: #b04a2e; }
+        .tag-politics { background: #e8edf5; color: #3a5a8c; }
+        .tag-culture { background: #eef0e6; color: #5a7a3a; }
+        .tag-discovery { background: #f5f0e2; color: #8c6d1a; }
+
+        /* 底部 */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 700px) {
+            .timeline::before { display: none; }
+            .event, .event:nth-child(odd) {
+                text-align: left;
+                padding-left: 24px;
+                padding-right: 0;
+            }
+            .year-badge::after { display: none; }
+            .event-card { border-left: 4px solid var(--gold); border-right: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<header>
+    <div class="header-ornament">❖ ❖ ❖</div>
+    <h1>世界大事纪</h1>
+    <p class="subtitle">从公元九百九十六年至一零二四年</p>
+    <span class="date-range">996 — 1024 AD</div>
+</header>
+
+<main class="timeline">
+
+    <!-- 996 -->
+    <article class="event">
+        <span class="year-badge">996</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">奥托三世继位神圣罗马帝国皇帝</h3>
+            <p class="event-desc">奥托二世去世，其子奥托三世（Otto III）继位为神圣罗马帝国皇帝。他推行"Renovatio Imperii"（帝国更新）理念，试图重建帝国的统一与基督教秩序，是这一时期欧洲政治的重要转折。</p>
+        </div>
+    </article>
+
+    <!-- 997 -->
+    <article class="event">
+        <span class="year-badge">997</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">奥托三世率军征服波兰，建立布列斯劳夫公国</h3>
+            <p class="event-desc">奥托三世率大军入侵波兰，击败波兰王公鲍勃（Bolesław I），将其领土纳入帝国影响范围。同年，他访问罗马并受教皇约翰十五加冕为皇帝，标志其"世界皇帝"野心的巅峰。</p>
+        </div>
+    </article>
+
+    <!-- 998 -->
+    <article class="event">
+        <span class="year-badge">998</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">英格兰国王埃德加去世，爱德华（"圣徒"）继位</h3>
+            <p class="event-desc">盎格鲁-撒克逊国王埃德加（Aethelred the Unready）去世，其弟爱德华（Edward the Martyr / Edward the Confessor 之先王）继位。这一时期英格兰正面临维京人（丹麦、挪威）的持续入侵压力。</p>
+        </div>
+    </article>
+
+    <!-- 999 -->
+    <article class="event">
+        <span class="year-badge">999</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">维京入侵英格兰加剧，埃德加之子埃格伯特·斯梯利特金失位</h3>
+            <p class="event-desc">丹麦王阿尔弗雷德（Sweyn Forkbeard）与挪威王奥拉夫（Olaf Tryggvason）的势力在北海地区博弈。英格兰国王埃格伯特·斯梯利特金（Eadred）被迫向维京人纳贡，盎格鲁-撒克逊王国陷入动荡。</p>
+        </div>
+    </article>
+
+    <!-- 1000 -->
+    <article class="event">
+        <span class="year-badge">1000</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">丹麦王阿尔弗雷德征服英格兰，建立"大英帝国"</h3>
+            <p class="event-desc">丹麦王阿尔弗雷德·叉腿（Sweyn Forkbeard）率军登陆英格兰，击败国王埃格伯特·斯梯利特金，将其流放。阿尔弗雷德成为英格兰、丹麦和挪威的统治者，建立了短暂的大英帝国（Great Britain Empire），维京统治进入鼎盛。</p>
+        </div>
+    </article>
+
+    <!-- 1002 -->
+    <article class="event">
+        <span class="year-badge">1002</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">阿尔弗雷德去世，丹麦王位继位纷争</h3>
+            <p class="event-desc">丹麦王阿尔弗雷德·叉腿去世，其子克努特（Canute / Cnut）继承丹麦王位。克努特随后征服英格兰和挪威，成为"三王国之王"，维京统治达到顶峰。</p>
+        </div>
+    </article>
+
+    <!-- 1003 -->
+    <article class="event">
+        <span class="year-badge">1003</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特征服英格兰，成为英格兰国王</h3>
+            <p class="event-desc">丹麦王克努特（Cnut the Great）率军入侵英格兰，击败盎格鲁-撒克逊军队。同年，克努特正式加冕为英格兰国王，同时保留丹麦和挪威王位，建立"大英帝国"（Great Britain Empire），统治范围涵盖北欧至不列颠。</p>
+        </div>
+    </article>
+
+    <!-- 1004 -->
+    <article class="event">
+        <span class="year-badge">1004</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特巩固统治，控制北海诸国</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）巩固其在丹麦、挪威和英格兰的统治。他建立"大英帝国"（Great Britain Empire），将北海沿岸诸国纳入其势力范围，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1005 -->
+    <article class="event">
+        <span class="year-badge">1005</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝统治鼎盛，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治达到鼎盛。他控制丹麦、挪威、英格兰以及部分北欧地区，是"大英帝国"（Great Britain Empire）最强大的统治者。其统治标志着维京时代的最后辉煌。</p>
+        </div>
+    </article>
+
+    <!-- 1006 -->
+    <article class="event">
+        <span class="year-badge">1006</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固北海帝国，统治范围达到最大</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1007 -->
+    <article class="event">
+        <span class="year-badge">1007</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝统治继续巩固，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1008 -->
+    <article class="event">
+        <span class="year-badge">1008</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1009 -->
+    <article class="event">
+        <span class="year-badge">1009</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1010 -->
+    <article class="event">
+        <span class="year-badge">1010</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1011 -->
+    <article class="event">
+        <span class="year-badge">1011</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1012 -->
+    <article class="event">
+        <span class="year-badge">1012</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1013 -->
+    <article class="event">
+        <span class="year-badge">1013</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1014 -->
+    <article class="event">
+        <span class="year-badge">1014</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1015 -->
+    <article class="event">
+        <span class="year-badge">1015</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1016 -->
+    <article class="event">
+        <span class="year-badge">1016</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1017 -->
+    <article class="event">
+        <span class="year-badge">1017</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1018 -->
+    <article class="event">
+        <span class="year-badge">1018</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1019 -->
+    <article class="event">
+        <span class="year-badge">1019</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1020 -->
+    <article class="event">
+        <span class="year-badge">1020</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1021 -->
+    <article class="event">
+        <span class="year-badge">1021</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1022 -->
+    <article class="event">
+        <span class="year-badge">1022</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1023 -->
+    <article class="event">
+        <span class="year-badge">1023</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+    <!-- 1024 -->
+    <article class="event">
+        <span class="year-badge">1024</span>
+        <div class="event-card">
+            <span class="region-tag tag-war">欧洲 · 军事</span>
+            <h3 class="event-title">克努特大帝巩固统治，北海帝国全盛</h3>
+            <p class="event-desc">克努特大帝（Cnut the Great）的统治继续巩固。他的"大英帝国"（Great Britain Empire）涵盖丹麦、挪威、英格兰以及部分北欧地区，是维京时代最强大的统治者之一。</p>
+        </div>
+    </article>
+
+</main>
+
+<footer>
+    <p>本页面收录公元996年至1024年间世界主要历史事件</p>
+    <p style="margin-top: 8px; font-size: 0.75rem;">© 2024 · 世界大事纪</p>
+</footer>
+
+</body>
+</html>

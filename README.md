@@ -41,6 +41,7 @@ scripts/make-kv-bias.sh   generate the required KV calibration bias
 RECIPE.md                 every flag and why, per-task measurements, 12 caveats
 BUILD.md                  rebuild for any GPU, and the three build traps
 DOCKER.md                 step-by-step: pull, configure, up, verify, troubleshoot
+benchmark/                per-tag test evidence: reports, t1/t2 outputs, harness sessions
 REBASE.md                 how the fork was replayed onto upstream mainline, and what broke
 evidence/                 scripts + raw output + session logs for every claim
 ```
