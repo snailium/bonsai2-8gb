@@ -49,6 +49,9 @@ would let an image-affecting change ship without a rebuild.
 `<version>` is the upstream identity, e.g. `b11158-1` = llama.cpp `b11158` plus our
 revision — not an invented semver.
 
+Test evidence is filed under the dated tag, never under a pointer: `benchmark/` has one
+directory per validated build, and its README explains why.
+
 ## Promoting
 
 `.github/workflows/promote.yml` is `workflow_dispatch` only. It copies the index

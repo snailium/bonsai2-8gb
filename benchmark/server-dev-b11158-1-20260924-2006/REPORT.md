@@ -1,13 +1,16 @@
 # Container Backend Test Report — RTX 5060 · both snails
 
-Archived under `benchmark/stable/`, where the directory names the **channel** this run
-validated. The digest below identifies the actual bytes; a tag can move, a digest cannot.
+Archived under `benchmark/server-dev-b11158-1-20260924-2006/` — the dated build tag this
+run was validated on. Unlike `stable` and `server-dev`, a dated tag never moves, so the
+directory identifies the build; the digest below is the byte-level identity, which lets
+the two be cross-checked.
 
 Date: 2026-09-24
 Host / card: `.102` (test-ai) — NVIDIA GeForce RTX 5060, 8151 MiB reported (447 MiB
 driver-reserved, 7704 MiB usable), driver 595.91.07, Ubuntu 26.04
-Backend: llama-server from the **universal CUDA tarball `b11158-1`**, running inside
-`ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:stable`
+Backend: llama-server from the **universal CUDA tarball `b11158-1`**, running inside an
+image pulled as `ghcr.io/snailium/bonsai2-8gb/llama-bonsai2:stable`, which at the time
+resolved to the dated tag this directory is named after
 Image digest: `sha256:b5245beac224b297faa9e2c6b3299f1c2c289f56d7c69d92f9b2a1067b5a1e7a`
 Harness: `ghcr.io/snailium/dsh-container/dsh:latest`, digest
 `sha256:4cee61f2253e793ea9c34346a6ff1c90e620e01f2fcc1180733e242c6ac807c6`,
