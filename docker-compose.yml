@@ -84,6 +84,12 @@ services:
       LLAMA_ARG_N_GPU_LAYERS: "99"
       LLAMA_ARG_N_PARALLEL: "1"
       LLAMA_ARG_SPEC_TYPE: "draft-mtp"
+      # Must stay 1 at this context. Measured: with 2, the server loads
+      # (7646 MiB) and then aborts on the first request with
+      # "CUDA error: the resource allocation failed" - K=2 needs ~150 MiB more and
+      # 40960 already uses 7496 of 7704 usable MiB. It reports healthy before it
+      # dies, and restart: unless-stopped hides the crash. K=2 only fits at a
+      # smaller context (32768 leaves ~1.4 GiB spare) and buys +4-8% decode there.
       LLAMA_ARG_SPEC_DRAFT_N_MAX: "1"
       # agent/tool work wants a bounded, low-effort thinker; the template
       # default ("xhigh") is actively harmful on this model

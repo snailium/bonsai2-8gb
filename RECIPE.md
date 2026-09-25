@@ -177,6 +177,52 @@ so it degrades most gracefully if your workload drafts poorly.
 Note that production `b70-sycl` uses `3`, but that is a different model
 (Qwen3.8-27B with its own MTP head), so the value is not transferable.
 
+#### Re-measured: K=1 vs K=2 at equal context, and the metric that explains it
+
+A controlled pair — same context (`-c 32768`), same prompts, same sampling, only K
+varying, run inside the released container. The acceptance *rate* is not comparable
+across K (a K=2 step draws two drafts), so the useful figure is **accepted tokens
+per verify step**:
+
+| | t1 decode | t2 decode | accepted/step | acceptance | VRAM at load |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **K=1** | 66.15 tok/s | 67.69 tok/s | 1.88 | 83.8 % / 91.1 % | 7272 MiB |
+| **K=2** | **71.39 tok/s** | **70.57 tok/s** | **2.76** | 90.6 % / 80.7 % | 7422 MiB |
+
+K=2 is **+7.9 % (t1) and +4.3 % (t2)** faster and costs **+150 MiB**. The server's own
+accounting shows why: `common_specu: statistics` reports `#mean acc len = 2.76` for
+K=2 against `1.88` for K=1, and `#acc rate/pos = (0.918, 0.844)` — the *second*
+draft token is still accepted **84 %** of the time, so the extra verify work buys
+~47 % more tokens per step.
+
+Output length differs wildly between runs (t1 produced 8543 tokens under K=2 and
+2731 under K=1) because sampling at `temperature 0.2` diverges; **compare rates, not
+wall-clock**.
+
+#### K=2 does not fit at `-c 40960` on 8 GB
+
+Measured on the same card with the released image: `-c 40960` with
+`--spec-draft-n-max 2` loads to 7646 MiB and then **aborts on the first request**:
+
+```
+ggml-cuda.cu:109: CUDA error
+CUDA error: the resource allocation failed
+```
+
+The arithmetic is consistent: K=2 needs ~150 MiB more than K=1, and at 40960 K=1
+already sits at 7496 of 7704 usable MiB. There is no headroom for the second draft.
+
+Two things make this failure mode worth knowing about:
+
+- the server reports **healthy** first and only dies when a request arrives, so a
+  readiness probe does not catch it;
+- with `restart: unless-stopped`, Docker silently restarts the container, so the
+  symptom a user sees is "healthy container, every long request returns nothing",
+  not a crash.
+
+**Therefore: K=1 at `-c 40960` (the shipped configuration). K=2 only if you drop the
+context — at 32768 it fits with ~1.4 GiB to spare.**
+
 ### Sampling
 
 The template's `presence_penalty` default is `0.0`, which is wrong for this
