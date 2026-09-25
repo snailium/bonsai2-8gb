@@ -14,6 +14,21 @@ server-dev-b11158-1-20260924-2006/
   t5-session-0d5af379.v3.jsonl(.zstd)
 ```
 
+## Naming lineage
+
+Directories keep the names a run was made under, so read the report beside them, not the
+filenames, and know what changed:
+
+| then | now | note |
+|---|---|---|
+| t1, t2 | **T1, T2** | unchanged prompts |
+| t3, t4, t5 | **A1, A2, A3** | renamed to mark the agentic tasks (A = agentic); same tasks |
+| V1, V2, V3 | **V1, V2, V3** | prompts rewritten after this run; V3 now plants an anchoring trap |
+
+An archive from before the rename will have `t3-…`/`t4-…`/`t5-…` session files while the
+current procedure says `a1`/`a2`/`a3`. That is a relabelling, not a different task, and the
+report in that directory says so.
+
 ## Why the directory is a dated tag and not a channel name
 
 `stable` and `server-dev` are **pointers**: they move as new builds are promoted, so a

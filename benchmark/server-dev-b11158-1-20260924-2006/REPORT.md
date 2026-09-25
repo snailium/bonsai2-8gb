@@ -5,6 +5,14 @@ run was validated on. Unlike `stable` and `server-dev`, a dated tag never moves,
 directory identifies the build; the digest below is the byte-level identity, which lets
 the two be cross-checked.
 
+> **Naming lineage.** This run predates two later changes, and the filenames beside it keep
+> the names it was made under. The agentic tasks were renamed **T3/T4/T5 → A1/A2/A3** (A =
+> agentic), which is why the sessions here are `t3-…`, `t4-…`, `t5-…` but the current
+> procedure calls them `a1`, `a2`, `a3` — same tasks, relabelled. Separately, the V1/V2/V3
+> prompts were rewritten afterwards (V3 now carries a deliberate anchoring trap), and this
+> battery ran no vision tasks at all, so nothing here reflects them. The T1/T2 prompts are
+> unchanged and the results below still stand as-is.
+
 Date: 2026-09-24
 Host / card: `.102` (test-ai) — NVIDIA GeForce RTX 5060, 8151 MiB reported (447 MiB
 driver-reserved, 7704 MiB usable), driver 595.91.07, Ubuntu 26.04
