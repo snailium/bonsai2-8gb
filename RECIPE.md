@@ -266,6 +266,17 @@ as well. It is not a reason to change the shipped configuration. On a card with
 roughly 2 GiB more headroom the drafter would fit on the GPU, and the comparison
 would be worth repeating there.
 
+**Decision — this is settled, do not re-open it without new hardware.** No dflash
+configuration is viable on an 8 GB card, and the blocker is **memory, not drafter
+quality**: the ~1.6 GiB the drafter needs does not exist once the main model and the
+KV cache are loaded, at any context worth serving. A drafter trained on the ternary
+target does exist — `ProCreations/Ternary-Bonsai-2-27B-DFlash2`, reported at 3.80
+accepted tokens per round against 3.47 for the Qwen3.8 drafter used above — and it
+would raise acceptance, but acceptance was never the obstacle here. **MTP stays.**
+
+The one thing that would change this: a drafter small enough to share the card with
+the main model, or a card with ~2 GiB more free. Neither is a configuration change.
+
 ### Sampling
 
 The template's `presence_penalty` default is `0.0`, which is wrong for this
