@@ -26,11 +26,11 @@ FROM ubuntu:${UBUNTU_VERSION}
 # so the LABEL below would otherwise interpolate an empty string.
 ARG UBUNTU_VERSION
 
-ARG BONSAI2_VERSION=b11158-1
+ARG BONSAI2_VERSION=v0.6.0-1
 ARG TARBALL=bonsai2-cuda-universal-${BONSAI2_VERSION}.tar.gz
 ARG TARBALL_URL=https://github.com/snailium/bonsai2-mainline/releases/download/${BONSAI2_VERSION}/${TARBALL}
 # Pinned so a re-tagged or tampered release cannot silently change the image.
-ARG TARBALL_SHA256=652cd2b012c17a353c76ca8185ea1a28edfc47d38be799ab356fc91396f33b48
+ARG TARBALL_SHA256=23811185aa58b7e861a686aa1dcf0391af2c7211a506f689873f86b9bd0ac6ea
 
 LABEL org.opencontainers.image.title="llama-bonsai2" \
       org.opencontainers.image.description="Ternary Bonsai 2 27B (PTQ1_0) runtime, universal CUDA build" \

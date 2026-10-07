@@ -77,7 +77,7 @@ services:
       - ${BONSAI2_MODELS_DIR:-./models}:/models
     environment:
       # --- the 8 GB profile (validated: pp512 710, tg128 54.2) -------------
-      LLAMA_ARG_CTX_SIZE: "40960"
+      LLAMA_ARG_CTX_SIZE: "49152"
       LLAMA_ARG_CACHE_TYPE_K: "q4_0"      # --kv-mean-center requires q4_0
       LLAMA_ARG_CACHE_TYPE_V: "q4_0"
       LLAMA_ARG_FLASH_ATTN: "on"
@@ -91,6 +91,14 @@ services:
       # dies, and restart: unless-stopped hides the crash. K=2 only fits at a
       # smaller context (32768 leaves ~1.4 GiB spare) and buys +4-8% decode there.
       LLAMA_ARG_SPEC_DRAFT_N_MAX: "1"
+      # v0.6.0 reserves graph memory for every split (upstream #29856), so the
+      # prompt-processing compute buffer grew. At ctx 49152 the default ubatch of 512
+      # loads at 7596 MiB and then dies on a ~9k-token prompt with
+      # "CUDA error: out of memory" (cuMemCreate inside ggml_cuda_mul_mat_q); 256 loads
+      # at 7422 MiB and served 12k/24k/36k-token prompts on the reference card.
+      # The variable is LLAMA_ARG_UBATCH, NOT LLAMA_ARG_UBATCH_SIZE - an unknown
+      # LLAMA_ARG_* is silently ignored, so a misspelling runs at 512 while looking set.
+      LLAMA_ARG_UBATCH: "256"
       # agent/tool work wants a bounded, low-effort thinker; the template
       # default ("xhigh") is actively harmful on this model
       LLAMA_ARG_REASONING_EFFORT: "low"
